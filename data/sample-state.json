@@ -1,0 +1,38 @@
+{
+  "sessions": [
+    {"id":"seed-2026-07-05","date":"2026-07-05","day":"push","flag":"fresh","mins":60,"srpe":6,"bw":83.2,
+     "entries":[
+      {"ex":"Landmine rotational punch","load":10,"sets":"3x3/side","amrap":null,"rpe":5,"pain":0,"note":""},
+      {"ex":"Bench press","load":80,"sets":"4x4","amrap":null,"rpe":8.5,"pain":0,"note":"Cap breach — hold 80 until ≤7 fresh"},
+      {"ex":"Half-kneeling landmine press","load":10,"sets":"3x8/side","amrap":null,"rpe":6.5,"pain":0,"note":"Acclim reps"},
+      {"ex":"Cable lateral raise (behind-back)","load":5,"sets":"2x15","amrap":null,"rpe":null,"pain":0,"note":"wk1 volume"},
+      {"ex":"Bottoms-up KB press","load":8,"sets":"3x8/side","amrap":null,"rpe":6.5,"pain":1,"note":"L ACJ click fading by set 4"},
+      {"ex":"OH cable triceps extension","load":30,"sets":"3x12","amrap":null,"rpe":7,"pain":0,"note":""},
+      {"ex":"Face pull (seated)","load":20,"sets":"1x15","amrap":null,"rpe":5.5,"pain":0,"note":""}]},
+    {"id":"synth-lower-1","date":"2026-07-07","day":"lower","flag":"pre","mins":55,"srpe":7,"bw":83.4,
+     "entries":[
+      {"ex":"Box squat","load":70,"sets":"4x4","amrap":null,"rpe":7,"pain":0,"note":"wk1 ramp sets"},
+      {"ex":"Trap bar / block pull","load":110,"sets":"3x4","amrap":null,"rpe":7.5,"pain":0,"note":""},
+      {"ex":"Hip thrust","load":80,"sets":"3x8","amrap":null,"rpe":7,"pain":0,"note":""},
+      {"ex":"Suitcase carry","load":28,"sets":"","amrap":null,"rpe":6,"pain":0,"note":"4 sets L, 3 R"}]},
+    {"id":"synth-pull-1","date":"2026-07-09","day":"pull","flag":"bjj","mins":50,"srpe":6,"bw":null,
+     "entries":[
+      {"ex":"Weighted pull-up (neutral)","load":5,"sets":"4x5","amrap":null,"rpe":7.5,"pain":0,"note":"post-roll, grip cooked"},
+      {"ex":"Chest-supported row","load":50,"sets":"3x8","amrap":null,"rpe":7,"pain":0,"note":""},
+      {"ex":"RDL","load":90,"sets":"3x6","amrap":null,"rpe":7,"pain":0,"note":""}]},
+    {"id":"synth-push-2","date":"2026-07-12","day":"push","flag":"fresh","mins":62,"srpe":6,"bw":83.6,
+     "entries":[
+      {"ex":"Bench press","load":80,"sets":"4x4","amrap":6,"rpe":7.5,"pain":0,"note":"AMRAP last set 6"},
+      {"ex":"Half-kneeling landmine press","load":12.5,"sets":"4x6/side","amrap":null,"rpe":7,"pain":0,"note":""},
+      {"ex":"Cable lateral raise (behind-back)","load":7.5,"sets":"4x14","amrap":null,"rpe":8,"pain":0,"note":""},
+      {"ex":"Bottoms-up KB press","load":8,"sets":"3x8/side","amrap":null,"rpe":6,"pain":0,"note":"click gone by set 2"},
+      {"ex":"OH cable triceps extension","load":32.5,"sets":"4x11","amrap":null,"rpe":7.5,"pain":0,"note":""},
+      {"ex":"Face pull (seated)","load":22.5,"sets":"3x15","amrap":null,"rpe":7,"pain":0,"note":""}]}
+  ],
+  "bjj": [
+    {"id":"b1","date":"2026-07-07","mins":75,"srpe":8,"note":"hard rounds"},
+    {"id":"b2","date":"2026-07-09","mins":60,"srpe":7,"note":"sparring"},
+    {"id":"b3","date":"2026-07-11","mins":45,"srpe":5,"note":"drilling"}
+  ],
+  "subs": {}, "waves": {}, "deload": null, "overrides": {}, "proposals": [], "comp": null, "lastReview": null
+}

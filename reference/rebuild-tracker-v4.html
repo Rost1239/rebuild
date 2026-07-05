@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>REBUILD v4 — Training Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#101418; --surface:#1A2027; --surface2:#222A33; --line:#2C3540;
+    --text:#E8EDF2; --muted:#7D8894;
+    --cleared:#4ADE9C; --hold:#F5B04C; --breach:#F26D5B; --wave:#7FB2FF;
+    --cleared-dim:rgba(74,222,156,.12); --hold-dim:rgba(245,176,76,.12);
+    --breach-dim:rgba(242,109,91,.12); --wave-dim:rgba(127,178,255,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px}
+  #app{max-width:460px;margin:0 auto;padding:0 12px 120px}
+
+  .hdr{display:flex;align-items:baseline;justify-content:space-between;padding:16px 4px 8px}
+  .hdr h1{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:28px;letter-spacing:.06em}
+  .hdr h1 span{color:var(--cleared)}
+  .wk{font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .wk b{color:var(--text)}
+
+  .tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+  .tab{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.05em;text-align:center;
+       padding:10px 0;border:1px solid var(--line);border-radius:8px;color:var(--muted);cursor:pointer;background:var(--surface)}
+  .tab.on{color:var(--bg);background:var(--text);border-color:var(--text)}
+  .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--wave);margin-left:4px;vertical-align:middle}
+
+  .sbar{display:flex;gap:8px;align-items:center;margin:12px 0 8px;flex-wrap:wrap}
+  .sbar input[type=date]{background:var(--surface);border:1px solid var(--line);color:var(--text);
+       font-family:inherit;font-size:13px;padding:9px 10px;border-radius:8px;flex:1;min-width:130px;color-scheme:dark}
+  .flag{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .flag button{background:var(--surface);border:0;color:var(--muted);font-family:inherit;font-size:11px;padding:10px 10px;cursor:pointer}
+  .flag button.on{background:var(--surface2);color:var(--text);font-weight:600}
+  .flag button.on.pre{color:var(--wave)}
+  .flag button.on.post{color:var(--hold)}
+  .ramp{font-size:11px;color:var(--hold);padding:2px 4px 8px;letter-spacing:.02em;line-height:1.5}
+  .ramp.blue{color:var(--wave)}
+
+  .banner{margin:0 0 10px;padding:11px 12px;border-radius:10px;font-size:11px;line-height:1.55}
+  .banner.deload{border:1px solid rgba(242,109,91,.45);background:var(--breach-dim);color:var(--breach)}
+  .banner.deload-on{border:1px solid rgba(127,178,255,.45);background:var(--wave-dim);color:var(--wave)}
+  .banner button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:7px 10px;margin-top:8px;cursor:pointer;margin-right:8px}
+  .banner.deload button{background:var(--breach);color:var(--bg)}
+  .banner.deload-on button{background:none;color:var(--wave);text-decoration:underline;padding:0}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .exname{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:19px;letter-spacing:.03em;line-height:1.15}
+  .target{font-size:11px;color:var(--muted);margin-top:3px}
+  .swap{background:none;border:1px solid var(--line);color:var(--muted);font-family:inherit;font-size:10px;
+       padding:4px 8px;border-radius:6px;cursor:pointer;flex-shrink:0;letter-spacing:.05em}
+  .chip{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;padding:4px 8px;border-radius:20px;margin-top:8px}
+  .chip.cleared{color:var(--cleared);background:var(--cleared-dim)}
+  .chip.hold{color:var(--hold);background:var(--hold-dim)}
+  .chip.breach{color:var(--breach);background:var(--breach-dim)}
+  .chip.wave{color:var(--wave);background:var(--wave-dim)}
+  .chip.none{color:var(--muted);background:var(--surface2)}
+  .last{font-size:11px;color:var(--muted);margin-top:6px}
+  .last b{color:var(--text);font-weight:500}
+  .stall{margin-top:8px;padding:9px 10px;border:1px solid rgba(127,178,255,.4);border-radius:8px;background:var(--wave-dim);font-size:11px;color:var(--wave);line-height:1.5}
+  .stall.pain{border-color:rgba(242,109,91,.4);background:var(--breach-dim);color:var(--breach)}
+  .stall.ladder{border-color:rgba(74,222,156,.4);background:var(--cleared-dim);color:var(--cleared)}
+  .stall button{background:var(--wave);color:var(--bg);border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;
+       padding:6px 10px;margin-top:7px;cursor:pointer;margin-right:8px}
+  .stall.pain button{background:var(--breach)}
+  .stall.ladder button{background:var(--cleared)}
+  .stall .ghost{background:none;color:inherit;text-decoration:underline;padding:6px 0}
+  .wexit{background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px;font-family:inherit}
+
+  .row{display:flex;gap:8px;margin-top:10px}
+  .fld{flex:1}
+  .fld label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
+  .fld input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
+       font-family:inherit;font-size:15px;padding:10px;border-radius:8px}
+  .fld input:focus{outline:none;border-color:var(--muted)}
+  .fld.load{flex:0 0 84px}
+  .fld.amrap{flex:0 0 74px}
+
+  .rpewrap{margin-top:10px}
+  .rpewrap label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:5px}
+  .rpe{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .rpe::-webkit-scrollbar{display:none}
+  .rpe button{flex:0 0 auto;min-width:44px;padding:9px 0;border-radius:8px;border:1px solid var(--line);
+       background:var(--bg);color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer}
+  .rpe button.z-c{border-color:rgba(74,222,156,.35)}
+  .rpe button.z-h{border-color:rgba(245,176,76,.35)}
+  .rpe button.z-b{border-color:rgba(242,109,91,.35)}
+  .rpe button.on.z-c{background:var(--cleared);color:var(--bg);border-color:var(--cleared);font-weight:600}
+  .rpe button.on.z-h{background:var(--hold);color:var(--bg);border-color:var(--hold);font-weight:600}
+  .rpe button.on.z-b{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
+
+  .painrow{display:flex;gap:5px;margin-top:8px}
+  .painrow button{flex:1;padding:8px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg);
+       color:var(--muted);font-family:inherit;font-size:10px;letter-spacing:.05em;cursor:pointer}
+  .painrow button.on.p0{background:var(--cleared);color:var(--bg);border-color:var(--cleared);font-weight:600}
+  .painrow button.on.p1{background:var(--surface2);color:var(--text);border-color:var(--muted);font-weight:600}
+  .painrow button.on.p2{background:var(--hold);color:var(--bg);border-color:var(--hold);font-weight:600}
+  .painrow button.on.p3{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
+  .note input{margin-top:10px}
+
+  .addex{width:100%;background:none;border:1px dashed var(--line);color:var(--muted);font-family:inherit;
+       font-size:13px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px}
+
+  .sessmeta{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .sessmeta .lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px}
+
+  .savebar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(transparent,var(--bg) 30%);padding:18px 12px 20px;z-index:6}
+  .savebar .inner{max-width:460px;margin:0 auto}
+  .save{width:100%;background:var(--cleared);color:var(--bg);border:0;border-radius:10px;
+       font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.1em;padding:15px;cursor:pointer}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface2);
+       border:1px solid var(--line);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10;max-width:85%}
+  .toast.show{opacity:1}
+
+  .modal{position:fixed;inset:0;background:rgba(10,13,16,.85);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-width:460px;
+       max-height:70vh;overflow-y:auto;padding:16px}
+  .sheet h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.05em;margin-bottom:4px}
+  .sheet .sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+  .opt{padding:13px 10px;border-bottom:1px solid rgba(44,53,64,.5);cursor:pointer;font-size:14px}
+  .opt small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .opt.cur{color:var(--cleared)}
+  .sheet .cancel{width:100%;margin-top:12px;background:var(--surface2);border:0;color:var(--muted);
+       font-family:inherit;padding:12px;border-radius:8px;cursor:pointer}
+
+  .sess{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .sess .shead{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;cursor:pointer}
+  .sess .shead .l{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:17px;letter-spacing:.04em}
+  .sess .shead .l small{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:400;margin-left:8px}
+  .fbadge{font-size:10px;padding:3px 8px;border-radius:20px;letter-spacing:.05em}
+  .fbadge.fresh{color:var(--cleared);background:var(--cleared-dim)}
+  .fbadge.pre{color:var(--wave);background:var(--wave-dim)}
+  .fbadge.bjj{color:var(--hold);background:var(--hold-dim)}
+  .sbody{border-top:1px solid var(--line);padding:6px 14px 12px;display:none}
+  .sess.open .sbody{display:block}
+  .erow{display:grid;grid-template-columns:1fr 58px 74px 44px;gap:6px;padding:7px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:baseline}
+  .erow:last-of-type{border-bottom:0}
+  .erow .n{color:var(--text)} .erow .v{color:var(--muted);text-align:right} .erow .r{text-align:right;font-weight:600}
+  .r.z-c{color:var(--cleared)} .r.z-h{color:var(--hold)} .r.z-b{color:var(--breach)} .r.z-n{color:var(--muted);font-weight:400}
+  .painmark{font-size:10px;font-weight:600}
+  .painmark.p2{color:var(--hold)} .painmark.p3{color:var(--breach)}
+  .enote{grid-column:1/-1;font-size:11px;color:var(--muted);padding-bottom:4px;font-style:italic}
+  .del{background:none;border:0;color:var(--breach);font-family:inherit;font-size:11px;cursor:pointer;padding:8px 0 2px;letter-spacing:.05em}
+  .logtools{display:flex;gap:8px;margin:14px 0}
+  .logtools button{flex:1;background:var(--surface);border:1px solid var(--line);color:var(--muted);
+       font-family:inherit;font-size:11px;padding:11px 4px;border-radius:8px;cursor:pointer;letter-spacing:.02em}
+  .empty{color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
+  .loading{color:var(--muted);text-align:center;padding:60px 0;font-size:13px}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .panel h3{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.06em;margin-bottom:10px;color:var(--muted)}
+  .stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:13px}
+  .stat:last-child{border-bottom:0}
+  .stat .k{color:var(--muted)} .stat .v{font-weight:600}
+  .v.ok{color:var(--cleared)} .v.warn{color:var(--hold)} .v.bad{color:var(--breach)}
+  .bjjrow{display:grid;grid-template-columns:80px 1fr 50px 30px;gap:6px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:center}
+  .bjjrow .d{color:var(--muted)} .bjjrow .x{background:none;border:0;color:var(--breach);cursor:pointer;font-family:inherit}
+  .coachbtn{width:100%;background:var(--wave);color:var(--bg);border:0;border-radius:10px;
+       font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:.08em;padding:14px;cursor:pointer}
+  .coachbtn:disabled{background:var(--surface2);color:var(--muted)}
+  .review{font-size:13px;line-height:1.65;white-space:pre-wrap;margin-top:12px}
+  .review .rdate{font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px}
+
+  .prop{border:1px solid rgba(127,178,255,.35);background:var(--wave-dim);border-radius:10px;padding:11px 12px;margin-top:10px;font-size:12px;line-height:1.55}
+  .prop .ptype{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--wave);margin-bottom:3px}
+  .prop .pbtns{margin-top:8px}
+  .prop button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:7px 12px;cursor:pointer;margin-right:8px}
+  .prop .acc{background:var(--cleared);color:var(--bg)}
+  .prop .dis{background:none;color:var(--muted);text-decoration:underline}
+  .prop.invalid{border-color:var(--line);background:var(--surface2);color:var(--muted)}
+
+  .trend{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5)}
+  .trend:last-child{border-bottom:0}
+  .trend .tn{flex:1;font-size:12px}
+  .trend .tn small{display:block;color:var(--muted);font-size:10px}
+  .trend svg{flex:0 0 100px}
+  .trend .tv{flex:0 0 70px;text-align:right;font-size:13px;font-weight:600}
+  .trend .tv small{display:block;font-size:10px;font-weight:400}
+  .tv small.up{color:var(--cleared)} .tv small.dn{color:var(--breach)}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:60px;margin-top:6px}
+  .bars .b{flex:1;background:var(--wave-dim);border:1px solid rgba(127,178,255,.3);border-radius:4px 4px 0 0;position:relative}
+  .bars .b span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted)}
+  .barlbl{display:flex;gap:6px;margin-top:4px}
+  .barlbl div{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+
+  .esdphase{font-family:'Barlow Condensed',sans-serif;font-size:22px;letter-spacing:.05em;color:var(--wave);margin:6px 0}
+  .esdrx{font-size:12px;color:var(--text);line-height:1.7;margin-top:8px}
+  .esdrx b{color:var(--wave)}
+  .esdrules{font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading engine…</div></div>
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ================= EXERCISE LIBRARY ================= */
+const LIB = {
+  primer_rot:[
+    {n:"Landmine rotational punch", d:"hip-driven diagonal punch, bar speed"},
+    {n:"Med ball rotational scoop toss", d:"hip rotation, lateral throw"},
+    {n:"Med ball side slam", d:"pivot + slam beside lead foot"},
+    {n:"Band rotational punch", d:"max intent, zero space"}],
+  horizontal_press:[
+    {n:"Bench press", d:"moderate grip"},
+    {n:"DB bench (limited ROM)", d:"stop 2in above chest"},
+    {n:"Floor press", d:"hard ROM cap, elbow-friendly"},
+    {n:"Machine chest press", d:"fixed path"}],
+  overhead_press:[
+    {n:"Half-kneeling landmine press", d:"scapular plane — ladder rung 1"},
+    {n:"Seated DB press (neutral)", d:"ladder rung 2 (~wk5)"},
+    {n:"Standing barbell OHP", d:"ladder rung 3 (~wk9, asymptomatic only)"},
+    {n:"Standing landmine press", d:"between rungs 1 and 2"}],
+  lateral_delt:[
+    {n:"Cable lateral raise (behind-back)", d:"peak mid-range tension"},
+    {n:"Lean-away cable lateral", d:"if column blocks behind-back"},
+    {n:"DB lateral raise", d:"scaption plane"},
+    {n:"Machine lateral raise", d:""}],
+  cuff_press:[
+    {n:"Bottoms-up KB press", d:"contralateral knee — your variation"},
+    {n:"Bottoms-up KB hold/carry", d:"regression when ACJ flares"},
+    {n:"Tall-kneeling BU KB press", d:"symmetric base"}],
+  triceps:[
+    {n:"OH cable triceps extension", d:"long head"},
+    {n:"Cable pushdown", d:""},
+    {n:"OH DB extension (supported)", d:""}],
+  rear_chain_delt:[
+    {n:"Face pull (seated)", d:"split + rotate at end"},
+    {n:"Reverse pec deck", d:""},
+    {n:"Cross-body cable rear delt", d:""}],
+  lower_trap:[
+    {n:"Trap-3 raise", d:"prone Y, light"},
+    {n:"Cable Y-raise", d:""},
+    {n:"Prone incline Y", d:""}],
+  squat:[
+    {n:"Box squat", d:"ladder rung 1"},
+    {n:"Zercher to box", d:"ladder rung 2 (~wk5)"},
+    {n:"Zercher squat", d:"ladder rung 3 (~wk9)"},
+    {n:"SSB box squat", d:"if elbows ever complain"},
+    {n:"Belt squat", d:"zero spinal load"}],
+  hinge_heavy:[
+    {n:"Trap bar / block pull", d:"mid-shin"},
+    {n:"Rack pull", d:"below knee"},
+    {n:"Conventional block pull", d:""}],
+  hinge_rdl:[
+    {n:"RDL", d:""},
+    {n:"DB RDL", d:""},
+    {n:"45° back extension (loaded)", d:""}],
+  glute:[
+    {n:"Hip thrust", d:""},
+    {n:"Machine hip thrust", d:""},
+    {n:"Cable pull-through", d:""}],
+  ham_curl:[
+    {n:"Nordic curl", d:""},
+    {n:"Seated leg curl", d:""},
+    {n:"Lying leg curl", d:""},
+    {n:"Slider leg curl", d:""}],
+  carry:[
+    {n:"Suitcase carry", d:"+1 set weak-QL side, same load"},
+    {n:"Farmer carry", d:"bilateral"},
+    {n:"Front rack carry", d:"clinch-specific"}],
+  frontal_core:[
+    {n:"Copenhagen plank", d:""},
+    {n:"Pallof press", d:""},
+    {n:"Side plank (loaded)", d:""},
+    {n:"Half-kneeling chop", d:""}],
+  vert_pull:[
+    {n:"Weighted pull-up (neutral)", d:""},
+    {n:"Lat pulldown (neutral)", d:""},
+    {n:"Single-arm lat pulldown", d:""}],
+  horiz_pull:[
+    {n:"Chest-supported row", d:""},
+    {n:"Seated cable row", d:""},
+    {n:"Single-arm DB row", d:""}],
+  biceps:[
+    {n:"Incline DB curl", d:""},
+    {n:"Cable curl", d:""},
+    {n:"EZ bar curl", d:""}],
+  biceps_neutral:[
+    {n:"Hammer curl", d:"gi grip carryover"},
+    {n:"Cross-body hammer", d:""},
+    {n:"Rope cable hammer", d:""}]
+};
+
+const LADDERS = {
+  squat:{slot:"lo-squat", rungs:["Box squat","Zercher to box","Zercher squat"], minWeek:[1,5,9]},
+  ohp:{slot:"pu-lmp", rungs:["Half-kneeling landmine press","Seated DB press (neutral)","Standing barbell OHP"], minWeek:[1,5,9]}
+};
+
+const SLOTS = {
+  push:[
+    {id:"pu-prime", role:"primer_rot", def:"Landmine rotational punch", t:"3×3/side · primer · bar speed", model:"primer"},
+    {id:"pu-bench", role:"horizontal_press", def:"Bench press", t:"4×3-4", model:"gate", inc:2.5},
+    {id:"pu-lmp", role:"overhead_press", def:"Half-kneeling landmine press", t:"4×5-6/side · wk1-2 acclim 3×8", model:"gate", inc:2.5, ladder:"ohp"},
+    {id:"pu-lat", role:"lateral_delt", def:"Cable lateral raise (behind-back)", t:"5×12-15", model:"dbl", lo:12, hi:15, inc:2.5},
+    {id:"pu-bu", role:"cuff_press", def:"Bottoms-up KB press", t:"3×6-8/side", model:"dbl", lo:6, hi:8, inc:2, regressTo:"Bottoms-up KB hold/carry"},
+    {id:"pu-tri", role:"triceps", def:"OH cable triceps extension", t:"4×10-12", model:"dbl", lo:10, hi:12, inc:2.5},
+    {id:"pu-fp", role:"rear_chain_delt", def:"Face pull (seated)", t:"3×15", model:"dbl", lo:12, hi:15, inc:2.5}
+  ],
+  lower:[
+    {id:"lo-prime", role:"primer_rot", def:"Med ball rotational scoop toss", t:"3×3/side · primer", model:"primer"},
+    {id:"lo-squat", role:"squat", def:"Box squat", t:"6×3-4", model:"gate", inc:5, ladder:"squat"},
+    {id:"lo-hinge", role:"hinge_heavy", def:"Trap bar / block pull", t:"4×4 · mid-shin", model:"gate", inc:5},
+    {id:"lo-thrust", role:"glute", def:"Hip thrust", t:"4×6-8", model:"dbl", lo:6, hi:8, inc:5},
+    {id:"lo-ham", role:"ham_curl", def:"Nordic curl", t:"3×6-10", model:"dbl", lo:6, hi:10, inc:2.5},
+    {id:"lo-carry", role:"carry", def:"Suitcase carry", t:"3/side +1 weak-QL side", model:"iso"},
+    {id:"lo-cph", role:"frontal_core", def:"Copenhagen plank", t:"2×/side", model:"iso"}
+  ],
+  pull:[
+    {id:"pl-prime", role:"primer_rot", def:"Med ball side slam", t:"3×3/side · primer", model:"primer"},
+    {id:"pl-pullup", role:"vert_pull", def:"Weighted pull-up (neutral)", t:"5×4-5", model:"gate", inc:2.5},
+    {id:"pl-row", role:"horiz_pull", def:"Chest-supported row", t:"4×6-8", model:"dbl", lo:6, hi:8, inc:2.5},
+    {id:"pl-rdl", role:"hinge_rdl", def:"RDL", t:"4×5-6", model:"gate", inc:5},
+    {id:"pl-rpd", role:"rear_chain_delt", def:"Reverse pec deck", t:"4×12-15", model:"dbl", lo:12, hi:15, inc:2.5},
+    {id:"pl-t3", role:"lower_trap", def:"Trap-3 raise", t:"2×10-12", model:"iso"},
+    {id:"pl-tri", role:"triceps", def:"OH cable extension", t:"3×10-12", model:"dbl", lo:10, hi:12, inc:2.5},
+    {id:"pl-curl", role:"biceps", def:"Incline DB curl", t:"3×8-12", model:"dbl", lo:8, hi:12, inc:2},
+    {id:"pl-ham", role:"biceps_neutral", def:"Hammer curl", t:"2×10-12", model:"dbl", lo:10, hi:12, inc:2}
+  ]
+};
+const DAY_LABEL={push:"PUSH",lower:"LOWER",pull:"PULL"};
+const RPE_VALUES=[5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10];
+const PAIN_LABELS=["CLEAN","NOISE","TIGHT","PAIN"];
+const FLAG_LABELS={fresh:"FRESH",pre:"PRE-BJJ",bjj:"POST-BJJ"};
+
+const SEED=[{id:"seed-2026-07-05",date:"2026-07-05",day:"push",flag:"fresh",mins:60,srpe:6,bw:null,entries:[
+ {ex:"Landmine rotational punch",load:10,sets:"3x3/side",rpe:5,pain:0,note:""},
+ {ex:"Bench press",load:80,sets:"4x4",rpe:8.5,pain:0,note:"Cap breach — hold 80 until ≤7 fresh"},
+ {ex:"Half-kneeling landmine press",load:10,sets:"3x8/side",rpe:6.5,pain:0,note:"Acclim reps; 4×5-6 from wk3"},
+ {ex:"Cable lateral raise (behind-back)",load:5,sets:"2x15",rpe:null,pain:0,note:"Started 10kg, dropped — wk1 volume"},
+ {ex:"Bottoms-up KB press",load:8,sets:"3x8/side",rpe:6.5,pain:1,note:"L ACJ click fading by set 4 — retest wk2. Contralateral kills QL bite"},
+ {ex:"OH cable triceps extension",load:30,sets:"3x12",rpe:7,pain:0,note:"First set 40×12"},
+ {ex:"Face pull (seated)",load:20,sets:"1x15",rpe:5.5,pain:0,note:"2×15@15 form work; 20-25 next"}]}];
+
+/* ================= STATE ================= */
+let S={sessions:[],bjj:[],subs:{},waves:{},deload:null,overrides:{},proposals:[],comp:null,lastReview:null};
+let view="push";
+let draft={date:todayISO(),flag:null,entries:{},custom:{push:[],lower:[],pull:[]},mins:"",srpe:null,bw:""};
+let bjjDraft={date:todayISO(),mins:"",srpe:null,note:""};
+
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function zone(r){if(r==null||r==="")return"n";return r<=7?"c":(r<=8?"h":"b");}
+function rnd(x,step){return Math.round(x/step)*step;}
+function parseSets(s){const m=(s||"").match(/(\d+)\s*[x×X]\s*(\d+)/);return m?{n:+m[1],reps:+m[2]}:null;}
+function e1rm(load,reps,rpe){return load*(1+(reps+(10-rpe))/30);}
+function daysAgo(n){return new Date(new Date(todayISO())-n*864e5).toISOString().slice(0,10);}
+/* best e1RM for an entry: AMRAP wins over top-set parse */
+function bestE1RM(e){
+  if(e.load==null)return null;
+  if(e.amrap)return e1rm(e.load,e.amrap,e.rpe??9);
+  const p=parseSets(e.sets);
+  if(p&&e.rpe!=null)return e1rm(e.load,p.reps,e.rpe);
+  return null;
+}
+
+/* ================= STORAGE ================= */
+async function boot(){
+  try{const r=await window.storage.get("rebuild-state");if(r&&r.value){S=Object.assign(S,JSON.parse(r.value));}}
+  catch(e){
+    try{const v1=await window.storage.get("sessions");if(v1&&v1.value){S.sessions=JSON.parse(v1.value);await persist();}}catch(e2){}
+  }
+  if(!S.sessions.length){S.sessions=SEED.slice();await persist();}
+  reclassify();
+}
+async function persist(){
+  try{const r=await window.storage.set("rebuild-state",JSON.stringify(S));if(!r)throw 0;return true;}
+  catch(e){toast("Save failed — retry");return false;}
+}
+function reclassify(){
+  const bjjDates=new Set(S.bjj.map(b=>b.date));
+  let changed=false;
+  for(const s of S.sessions)if(s.flag==="fresh"&&bjjDates.has(s.date)){s.flag="pre";changed=true;}
+  if(changed)persist();
+}
+
+/* ================= ENGINE ================= */
+function curEx(slot){return S.subs[slot.id]||slot.def;}
+function eligibleSessions(){return S.sessions.filter(s=>s.flag!=="bjj").sort((a,b)=>b.date.localeCompare(a.date));}
+function historyFor(ex,n){
+  const out=[];
+  for(const s of eligibleSessions()){
+    const e=s.entries.find(x=>x.ex===ex&&(x.load!=null||x.rpe!=null||x.pain!=null));
+    if(e){out.push({date:s.date,e});if(out.length>=n)break;}
+  }
+  return out;
+}
+function firstDate(){if(!S.sessions.length)return todayISO();return S.sessions.map(s=>s.date).sort()[0];}
+function weekNum(d){return Math.max(1,Math.floor((new Date(d||todayISO())-new Date(firstDate()))/(7*864e5))+1);}
+function isDeload(){return S.deload&&todayISO()<=S.deload.until;}
+
+function painState(slot){
+  const h=historyFor(curEx(slot),2);
+  if(!h.length)return null;
+  const latest=h[0].e.pain;
+  if(latest===3)return{level:"stop",txt:"PAIN logged last session — regress or drop the movement. Pain is the hard stop."};
+  if(latest===2&&h.length>1&&h[1].e.pain!=null&&h[1].e.pain>=2)
+    return{level:"regress",txt:"TIGHT/PAIN two sessions running — regression proposed."};
+  return null;
+}
+function painCleanFor(ex,days){
+  const cutoff=daysAgo(days);
+  for(const s of S.sessions){
+    if(s.date<cutoff)continue;
+    const e=s.entries.find(x=>x.ex===ex);
+    if(e&&e.pain!=null&&e.pain>=2)return false;
+  }
+  return true;
+}
+
+function ladderStatus(slot){
+  if(!slot.ladder)return null;
+  const L=LADDERS[slot.ladder];
+  const ex=curEx(slot);
+  const rung=L.rungs.indexOf(ex);
+  if(rung<0||rung>=L.rungs.length-1)return null;
+  const next=L.rungs[rung+1];
+  const wk=weekNum(todayISO());
+  if(wk<L.minWeek[rung+1])return{eligible:false,next,wk:L.minWeek[rung+1]};
+  if(!painCleanFor(ex,14))return{eligible:false,next,blocked:"pain"};
+  return{eligible:true,next};
+}
+window.advanceLadder=async(slotId,day)=>{
+  const slot=SLOTS[day].find(s=>s.id===slotId);
+  const st=ladderStatus(slot);
+  if(!st||!st.eligible)return;
+  S.subs[slotId]=st.next;
+  delete S.waves[slotId];
+  await persist();render();
+  toast("Advanced → "+st.next+". New baseline — first session RPE-capped.");
+};
+
+function stallDetected(slot){
+  const h=historyFor(curEx(slot),3);
+  if(h.length<3)return false;
+  const[a,b,c]=h;
+  if(a.e.load==null||a.e.load!==b.e.load||b.e.load!==c.e.load)return false;
+  if(a.e.rpe==null||b.e.rpe==null||c.e.rpe==null)return false;
+  return a.e.rpe>b.e.rpe&&b.e.rpe>c.e.rpe;
+}
+function waveRx(w){
+  if(w.wk===1)return{sets:"5x5",pct:.80};
+  if(w.wk===2)return{sets:"5x4",pct:.85};
+  if(w.wk===3)return{sets:"6x3",pct:.90};
+  return{sets:"3x3 deload",pct:.65};
+}
+window.startWave=async(slotId,day)=>{
+  const slot=SLOTS[day].find(s=>s.id===slotId);
+  const h=historyFor(curEx(slot),1);
+  if(!h.length)return;
+  const est=bestE1RM(h[0].e)||((h[0].e.load||60)*1.1);
+  S.waves[slotId]={active:true,tm:rnd(est*0.9,2.5),wk:1};
+  await persist();render();
+  toast("Wave started — TM "+S.waves[slotId].tm+"kg");
+};
+window.exitWave=async slotId=>{delete S.waves[slotId];await persist();render();};
+function advanceWaves(day,flag){
+  if(flag==="bjj"||isDeload())return;
+  for(const slot of SLOTS[day]){
+    const w=S.waves[slot.id];
+    if(w&&w.active){w.wk++;if(w.wk>4){w.wk=1;w.tm=rnd(w.tm+(slot.inc||2.5)*2,2.5);}}
+  }
+}
+
+function recommend(slot){
+  const ex=curEx(slot);
+  const h=historyFor(ex,1);
+  /* coach override wins (one session) */
+  const ov=S.overrides[ex];
+  if(ov)return{cls:"wave",txt:`COACH → ${ov.load}kg (${ov.reason||"override"})`};
+  if(isDeload()&&slot.model!=="primer"){
+    if(!h.length||h[0].e.load==null)return{cls:"wave",txt:"DELOAD — light, sets -⅓, RPE ≤6"};
+    return{cls:"wave",txt:`DELOAD — ${rnd(h[0].e.load*0.6,2.5)}kg, sets -⅓, RPE ≤6`};
+  }
+  const w=S.waves[slot.id];
+  if(w&&w.active){
+    const rx=waveRx(w);
+    return{cls:"wave",txt:`WAVE WK${w.wk===4?"DL":w.wk} — ${rx.sets} @ ${rnd(w.tm*rx.pct,2.5)}kg (TM ${w.tm})`};
+  }
+  if(!h.length)return{cls:"none",txt:"NO DATA — SET BASELINE"};
+  const{load,rpe}=h[0].e;
+  if(slot.model==="primer")return{cls:"none",txt:"SPEED WORK — LOAD STATIC"};
+  if(slot.model==="iso")return{cls:"none",txt:`LAST: ${load!=null?load+"kg":"—"}`};
+  if(rpe==null)return{cls:"none",txt:"NO RPE LOGGED"};
+  if(slot.model==="gate"){
+    if(rpe<=7)return{cls:"cleared",txt:`CLEARED → ${load!=null?rnd(load+slot.inc,0.5)+"kg":"+"+slot.inc}`};
+    if(rpe<=8)return{cls:"hold",txt:`HOLD ${load}kg`};
+    return{cls:"breach",txt:`BREACH — HOLD ${load}kg, NO GRIND`};
+  }
+  const p=parseSets(h[0].e.sets);
+  if(p&&p.reps>=slot.hi&&rpe<=8)return{cls:"cleared",txt:`TOP OF RANGE → +${slot.inc}kg`};
+  if(rpe>8.5)return{cls:"breach",txt:`TOO HEAVY — HOLD/DROP`};
+  return{cls:"hold",txt:`ADD REPS → ${slot.hi}`};
+}
+
+/* ================= LOAD MODEL ================= */
+function loadByDay(){
+  const m={};
+  for(const b of S.bjj)m[b.date]=(m[b.date]||0)+b.mins*b.srpe;
+  for(const s of S.sessions){
+    const mins=s.mins||60,srpe=s.srpe||6;
+    m[s.date]=(m[s.date]||0)+mins*srpe;
+  }
+  return m;
+}
+function acwrFrom(m){
+  const now=new Date(todayISO());let a=0,c=0,any=false;
+  for(let i=0;i<28;i++){
+    const d=new Date(now-i*864e5).toISOString().slice(0,10);
+    const v=m[d]||0;if(v>0)any=true;
+    if(i<7)a+=v;c+=v;
+  }
+  if(!any||c===0)return null;
+  return(a/7)/(c/28);
+}
+function combinedACWR(){return acwrFrom(loadByDay());}
+function bjjACWR(){
+  const m={};for(const b of S.bjj)m[b.date]=(m[b.date]||0)+b.mins*b.srpe;
+  return acwrFrom(m);
+}
+function tonnageBetween(start,end){
+  let t=0;
+  for(const s of S.sessions){
+    if(s.date<start||s.date>end)continue;
+    for(const e of s.entries){
+      const p=parseSets(e.sets);
+      if(p&&e.load!=null)t+=e.load*p.n*p.reps*(/side/i.test(e.sets)?2:1);
+    }
+  }
+  return Math.round(t);
+}
+function weekTonnage(){return tonnageBetween(daysAgo(7),todayISO());}
+
+/* ================= DELOAD TRIGGER ================= */
+function rpeDriftCount(){
+  let n=0;
+  for(const day of Object.keys(SLOTS))for(const slot of SLOTS[day]){
+    if(slot.model!=="gate")continue;
+    const h=historyFor(curEx(slot),2);
+    if(h.length===2&&h[0].e.load!=null&&h[0].e.load===h[1].e.load
+       &&h[0].e.rpe!=null&&h[1].e.rpe!=null&&h[0].e.rpe>h[1].e.rpe)n++;
+  }
+  return n;
+}
+function recentPain(){
+  const cutoff=daysAgo(7);
+  for(const s of S.sessions){
+    if(s.date<cutoff)continue;
+    for(const e of s.entries)if(e.pain!=null&&e.pain>=2)return true;
+  }
+  return false;
+}
+function deloadSignal(){
+  const reasons=[];
+  const r=combinedACWR();
+  if(r!=null&&r>1.4)reasons.push("combined ACWR "+r.toFixed(2));
+  const d=rpeDriftCount();
+  if(d>=2)reasons.push(d+" lifts with rising RPE at same load");
+  if(recentPain())reasons.push("pain/tightness ≥2 in last 7d");
+  return{fire:reasons.length>=2,reasons};
+}
+window.startDeload=async()=>{
+  S.deload={until:new Date(new Date(todayISO()).getTime()+7*864e5).toISOString().slice(0,10)};
+  await persist();render();toast("Deload active for 7 days");
+};
+window.endDeload=async()=>{S.deload=null;await persist();render();};
+
+/* ================= ESD PHASE PLANNER ================= */
+function esdPhase(){
+  if(!S.comp)return null;
+  const wksOut=Math.ceil((new Date(S.comp)-new Date(todayISO()))/(7*864e5));
+  if(wksOut<0)return{name:"COMP PASSED",wksOut,rx:"Clear the comp date or set the next one."};
+  if(wksOut===0)return{name:"COMP WEEK",wksOut,rx:"<b>Nothing new.</b> One alactic-power touch early week (6×6s max efforts, full rest). Strength: one light full-body session ≤RPE6. Everything else is rest, weight management, drilling."};
+  if(wksOut<=2)return{name:"TAPER",wksOut,rx:"<b>Alactic power only</b> — 2×/wk: 8×6-8s max efforts (sled, bike, med ball), rest 1:12+, stop while fast. No lactic work — it costs more than it pays this close. Strength: 2×/wk at 70-80% of normal loads, sets -⅓, zero grinds. Sparring tapers per your coach."};
+  if(wksOut<=6)return{name:"LACTIC CAPACITY BLOCK",wksOut,rx:"<b>1-2×/wk lactic capacity</b>: 40-90s all-out (bike erg, battle ropes, grappling-specific circuits) × 3-5 reps, rest 1:3-4. These are brutal — schedule ≥24h before hard sparring, never day before comp-pace rounds.<br><b>1×/wk alactic capacity</b>: 10s on/50s off × 5-6, 2-3 series.<br><b>Strength drops to 2×/wk maintenance</b> — mains at 80-85% of current loads, no progression attempts, accessories -⅓ volume. The rebuild pauses; you can't drive both adaptations."};
+  if(wksOut<=12)return{name:"ALACTIC BLOCK",wksOut,rx:"<b>2×/wk alactic work</b>, strength continues as programmed.<br>Day A — power: 8-10 × 6-10s max efforts (sled sprint, bike, med ball throws), rest 1:10-12, full recovery, quality only.<br>Day B — capacity: 10s on/50s off × 5-6 reps, 3 series, 3-4min between. Your rotational primers already count as power touches — Day A can replace them, not stack.<br>1×/wk tempo optional: 20-30min HR 130-150."};
+  return{name:"AEROBIC BASE",wksOut,rx:"<b>1-2×/wk low-intensity</b>: 20-40min HR 130-150 (bike, incline walk, light drilling) or tempo intervals 15s on/45s easy × 20. Builds the recovery floor for the harder blocks. Strength rebuild runs untouched."};
+}
+
+/* ================= COACH PROPOSALS ================= */
+function slotById(id){for(const d of Object.keys(SLOTS)){const s=SLOTS[d].find(x=>x.id===id);if(s)return{slot:s,day:d};}return null;}
+function validateProposal(p){
+  if(p.type==="set_sub"){
+    const f=slotById(p.slot_id);if(!f)return"unknown slot";
+    const ok=(LIB[f.slot.role]||[]).some(o=>o.n===p.exercise);
+    return ok?null:"exercise not in slot role";
+  }
+  if(p.type==="start_wave"){if(!slotById(p.slot_id))return"unknown slot";if(typeof p.tm!=="number")return"missing tm";return null;}
+  if(p.type==="exit_wave"){return slotById(p.slot_id)?null:"unknown slot";}
+  if(p.type==="advance_ladder"){
+    const f=slotById(p.slot_id);if(!f||!f.slot.ladder)return"not a ladder slot";
+    const L=LADDERS[f.slot.ladder];const r=L.rungs.indexOf(curEx(f.slot));
+    return(r>=0&&r<L.rungs.length-1)?null:"no next rung";
+  }
+  if(p.type==="start_deload")return null;
+  if(p.type==="override_load"){if(!p.exercise||typeof p.load!=="number")return"missing exercise/load";return null;}
+  return"unknown type";
+}
+window.acceptProposal=async idx=>{
+  const p=S.proposals[idx];if(!p||p.state!=="pending")return;
+  const err=validateProposal(p);
+  if(err){p.state="invalid";await persist();render();return;}
+  if(p.type==="set_sub"){S.subs[p.slot_id]=p.exercise;delete S.waves[p.slot_id];}
+  else if(p.type==="start_wave")S.waves[p.slot_id]={active:true,tm:rnd(p.tm,2.5),wk:1};
+  else if(p.type==="exit_wave")delete S.waves[p.slot_id];
+  else if(p.type==="advance_ladder"){
+    const f=slotById(p.slot_id);const L=LADDERS[f.slot.ladder];
+    S.subs[p.slot_id]=L.rungs[L.rungs.indexOf(curEx(f.slot))+1];delete S.waves[p.slot_id];
+  }
+  else if(p.type==="start_deload")S.deload={until:new Date(new Date(todayISO()).getTime()+7*864e5).toISOString().slice(0,10)};
+  else if(p.type==="override_load")S.overrides[p.exercise]={load:p.load,reason:p.reason||""};
+  p.state="accepted";
+  await persist();render();toast("Applied");
+};
+window.dismissProposal=async idx=>{
+  if(S.proposals[idx]){S.proposals[idx].state="dismissed";await persist();render();}
+};
+function pendingCount(){return(S.proposals||[]).filter(p=>p.state==="pending").length;}
+
+/* ================= SPARKLINE ================= */
+function spark(series,color){
+  if(series.length<2)return"";
+  const min=Math.min(...series),max=Math.max(...series);
+  const span=max-min||1;
+  const pts=series.map((v,i)=>`${(i/(series.length-1)*96+2).toFixed(1)},${(26-(v-min)/span*22).toFixed(1)}`).join(" ");
+  return`<svg viewBox="0 0 100 28" width="100" height="28"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+function e1rmSeries(ex){
+  const out=[];
+  const asc=eligibleSessions().slice().reverse();
+  for(const s of asc){
+    const e=s.entries.find(x=>x.ex===ex);
+    if(e){const v=bestE1RM(e);if(v!=null)out.push(v);}
+  }
+  return out.slice(-12);
+}
+
+/* ================= RENDER ================= */
+function render(){
+  const app=document.getElementById("app");
+  const wk=weekNum(draft.date);
+  let h=`<div class="hdr"><h1>RE<span>BUILD</span> v4</h1><div class="wk">WK <b>${wk}</b> · ${S.sessions.length} GYM · ${S.bjj.length} BJJ</div></div>`;
+  h+=`<div class="tabs">`;
+  for(const d of["push","lower","pull"])h+=`<div class="tab ${view===d?"on":""}" onclick="setView('${d}')">${DAY_LABEL[d]}</div>`;
+  h+=`<div class="tab ${view==="bjj"?"on":""}" onclick="setView('bjj')">BJJ</div>`;
+  h+=`<div class="tab ${view==="log"?"on":""}" onclick="setView('log')">LOG</div>`;
+  h+=`<div class="tab ${view==="coach"?"on":""}" onclick="setView('coach')">COACH${pendingCount()?'<span class="dot"></span>':""}</div></div>`;
+
+  if(view==="log"){app.innerHTML=h+renderLog();return;}
+  if(view==="bjj"){app.innerHTML=h+renderBJJ();return;}
+  if(view==="coach"){app.innerHTML=h+renderCoach();return;}
+
+  const rolledToday=S.bjj.some(b=>b.date===draft.date);
+  if(draft.flag===null)draft.flag=rolledToday?"bjj":"fresh";
+
+  h+=`<div class="sbar">
+    <input type="date" value="${draft.date}" onchange="draft.date=this.value;draft.flag=null;render()">
+    <div class="flag">
+      <button class="${draft.flag==="fresh"?"on":""}" onclick="draft.flag='fresh';render()">FRESH</button>
+      <button class="${draft.flag==="pre"?"on pre":""}" onclick="draft.flag='pre';render()">PRE-BJJ</button>
+      <button class="${draft.flag==="bjj"?"on post":""}" onclick="draft.flag='bjj';render()">POST-BJJ</button>
+    </div></div>`;
+
+  if(isDeload()){
+    h+=`<div class="banner deload-on">DELOAD ACTIVE until ${S.deload.until} — all loads ~60%, sets -⅓, RPE ≤6, no grinds. Waves paused.<button onclick="endDeload()">end early</button></div>`;
+  }else{
+    const ds=deloadSignal();
+    if(ds.fire)h+=`<div class="banner deload">DELOAD PROPOSED — ${ds.reasons.join(" · ")}.<button onclick="startDeload()">ACTIVATE 7-DAY DELOAD</button></div>`;
+  }
+
+  if(draft.flag==="pre"){
+    h+=`<div class="ramp blue">PRE-BJJ — counts for progression, but: no RPE 9+ axial grinds if sparring <5h out · primers stay in.`
+      +(view==="pull"?` GRIP WARNING — cap pull-ups/carries or use straps.`:"")
+      +(view==="lower"?` LOWER PRE-SPARRING — strongly reconsider. Squat/hinge fatigue before takedowns eats knees.`:"")
+      +`</div>`;
+  }
+  if(draft.flag==="bjj")h+=`<div class="ramp">POST-BJJ — target RPE, take resulting load. Doesn't count toward progression. Drop primers.</div>`;
+  if(wk<=2)h+=`<div class="ramp">WK ${wk} RAMP — sets cut ~⅓, RPE 7 cap, nothing grinds</div>`;
+
+  for(const slot of SLOTS[view])h+=renderSlot(slot);
+  for(const c of draft.custom[view])h+=renderCustom(c);
+  h+=`<button class="addex" onclick="addCustom()">+ add exercise to this session</button>`;
+
+  let srpeBtns="";
+  for(let i=1;i<=10;i++)srpeBtns+=`<button class="${i>=8?"z-b":(i>=6?"z-h":"z-c")} ${draft.srpe===i?"on":""}" onclick="draft.srpe=${draft.srpe===i?null:i};render()">${i}</button>`;
+  h+=`<div class="sessmeta"><div class="lbl">SESSION LOAD + BODYWEIGHT</div>
+    <div class="row" style="margin-top:0">
+      <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="draft.mins=this.value"></div>
+      <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="draft.bw=this.value"></div>
+      <div class="fld"><label>SESSION RPE</label><div class="rpe">${srpeBtns}</div></div></div></div>`;
+
+  h+=`<div class="savebar"><div class="inner"><button class="save" onclick="saveSession()">SAVE SESSION</button></div></div>`;
+  app.innerHTML=h;
+}
+
+function inputBlock(key,d){
+  let rpeBtns=RPE_VALUES.map(v=>{
+    const z="z-"+zone(v);const on=d.rpe===v?"on":"";
+    return`<button class="${z} ${on}" onclick="setRPE('${key}',${v})">${v}</button>`;}).join("");
+  let painBtns=PAIN_LABELS.map((l,i)=>
+    `<button class="p${i} ${d.pain===i?"on p"+i:""}" onclick="setPain('${key}',${i})">${l}</button>`).join("");
+  return`<div class="row">
+      <div class="fld load"><label>LOAD KG</label><input type="number" inputmode="decimal" step="0.5" value="${d.load??""}" onchange="setF('${key}','load',this.value)"></div>
+      <div class="fld"><label>SETS × REPS</label><input type="text" placeholder="e.g. 4x4" value="${d.sets??""}" onchange="setF('${key}','sets',this.value)"></div>
+      <div class="fld amrap"><label>AMRAP</label><input type="number" inputmode="numeric" placeholder="—" value="${d.amrap??""}" onchange="setF('${key}','amrap',this.value)"></div>
+    </div>
+    <div class="rpewrap"><label>TOP-SET RPE</label><div class="rpe">${rpeBtns}</div></div>
+    <div class="rpewrap" style="margin-top:8px"><label>JOINT / TISSUE</label><div class="painrow">${painBtns}</div></div>
+    <div class="fld note"><input type="text" placeholder="note" value="${d.note??""}" onchange="setF('${key}','note',this.value)"></div>`;
+}
+
+function renderSlot(slot){
+  const ex=curEx(slot);
+  const key=view+"|"+ex;
+  const d=draft.entries[key]||{};
+  const rec=recommend(slot);
+  const h1=historyFor(ex,1);
+  let e1txt="";
+  if(h1.length){const v=bestE1RM(h1[0].e);if(v!=null&&slot.model==="gate")e1txt=` · e1RM ~${Math.round(v)}`;}
+  const lastTxt=h1.length?`last <b>${h1[0].e.load!=null?h1[0].e.load+"kg":"—"} · ${h1[0].e.sets||"—"}${h1[0].e.amrap?" A"+h1[0].e.amrap:""} · ${h1[0].e.rpe!=null?"RPE "+h1[0].e.rpe:"no RPE"}${h1[0].e.pain!=null&&h1[0].e.pain>=2?" · "+PAIN_LABELS[h1[0].e.pain]:""}</b>${e1txt} (${h1[0].date.slice(5)})`:"no history";
+  const w=S.waves[slot.id];
+  let extras="";
+
+  const ps=painState(slot);
+  if(ps){
+    let btn="";
+    if(slot.regressTo)btn=`<button onclick="applySub('${slot.id}','${slot.regressTo.replace(/'/g,"\\'")}')">REGRESS → ${slot.regressTo}</button>`;
+    else if(slot.ladder){
+      const L=LADDERS[slot.ladder];const r=L.rungs.indexOf(ex);
+      if(r>0)btn=`<button onclick="applySub('${slot.id}','${L.rungs[r-1].replace(/'/g,"\\'")}')">RUNG DOWN → ${L.rungs[r-1]}</button>`;
+    }
+    if(!btn)btn=`<button onclick="openSub('${slot.id}','${view}')">SWAP MOVEMENT</button>`;
+    extras+=`<div class="stall pain">${ps.txt}${btn}<button class="ghost" onclick="render()">keep as is</button></div>`;
+  }
+  const ls=ladderStatus(slot);
+  if(ls&&ls.eligible&&!ps)
+    extras+=`<div class="stall ladder">LADDER — wk + symptom criteria met. Next rung: ${ls.next}.<button onclick="advanceLadder('${slot.id}','${view}')">ADVANCE</button><button class="ghost" onclick="render()">later</button></div>`;
+  if(!w&&slot.model==="gate"&&stallDetected(slot)&&!ps)
+    extras+=`<div class="stall">STALL — same load, RPE rising 2 progression weeks. Linear phase over.<button onclick="startWave('${slot.id}','${view}')">SWITCH TO WAVES</button></div>`;
+
+  const waveExit=w&&w.active?`<button class="wexit" onclick="exitWave('${slot.id}')">exit wave</button>`:"";
+  return`<div class="card">
+    <div class="top"><div><div class="exname">${ex}</div><div class="target">${slot.t}</div></div>
+    <button class="swap" onclick="openSub('${slot.id}','${view}')">SWAP</button></div>
+    <div><span class="chip ${rec.cls}">${rec.txt}</span>${waveExit}</div>
+    <div class="last">${lastTxt}</div>
+    ${extras}
+    ${inputBlock(key,d)}
+  </div>`;
+}
+function renderCustom(name){
+  const key=view+"|"+name;
+  const d=draft.entries[key]||{};
+  return`<div class="card">
+    <div class="top"><div><div class="exname">${name}</div><div class="target">custom — this session</div></div></div>
+    ${inputBlock(key,d)}
+  </div>`;
+}
+
+window.openSub=(slotId,day)=>{
+  const slot=SLOTS[day].find(s=>s.id===slotId);
+  const cur=curEx(slot);
+  const opts=LIB[slot.role]||[];
+  let h=`<div class="modal" onclick="closeSub(event)"><div class="sheet" onclick="event.stopPropagation()">
+    <h3>SWAP — ${slot.role.replace(/_/g," ").toUpperCase()}</h3>
+    <div class="sub">Same slot role · banned movements excluded · history follows the exercise</div>`;
+  for(const o of opts)
+    h+=`<div class="opt ${o.n===cur?"cur":""}" onclick="applySub('${slotId}','${o.n.replace(/'/g,"\\'")}')">${o.n}${o.n===cur?" ✓":""}<small>${o.d}</small></div>`;
+  h+=`<button class="cancel" onclick="closeSub()">cancel</button></div></div>`;
+  document.getElementById("modalRoot").innerHTML=h;
+};
+window.closeSub=e=>{if(e&&e.target&&!e.target.classList.contains("modal"))return;document.getElementById("modalRoot").innerHTML="";};
+window.applySub=async(slotId,name)=>{
+  S.subs[slotId]=name;
+  delete S.waves[slotId];
+  await persist();
+  document.getElementById("modalRoot").innerHTML="";
+  render();
+};
+
+/* ---- BJJ tab ---- */
+function renderBJJ(){
+  const rc=combinedACWR(),rb=bjjACWR();
+  const cls=v=>v==null?"":(v>1.5?"bad":(v>1.3?"warn":"ok"));
+  let srpeBtns="";
+  for(let i=1;i<=10;i++)srpeBtns+=`<button class="${i>=8?"z-b":(i>=6?"z-h":"z-c")} ${bjjDraft.srpe===i?"on":""}" onclick="bjjDraft.srpe=${bjjDraft.srpe===i?null:i};render()">${i}</button>`;
+  let h=`<div class="panel"><h3>ATHLETE LOAD</h3>
+    <div class="stat"><span class="k">Combined ACWR (gym+BJJ)</span><span class="v ${cls(rc)}">${rc==null?"— (need history)":rc.toFixed(2)}</span></div>
+    <div class="stat"><span class="k">BJJ-only ACWR</span><span class="v ${cls(rb)}">${rb==null?"—":rb.toFixed(2)}</span></div>
+    <div class="stat"><span class="k">Gym tonnage (7d)</span><span class="v">${weekTonnage().toLocaleString()} kg</span></div>
+    <div class="stat"><span class="k">BJJ sessions (7d)</span><span class="v">${S.bjj.filter(b=>b.date>=daysAgo(7)).length}</span></div></div>`;
+  h+=`<div class="panel"><h3>LOG A ROLL / ESD SESSION</h3>
+    <div class="row"><div class="fld"><label>DATE</label><input type="date" value="${bjjDraft.date}" style="color-scheme:dark" onchange="bjjDraft.date=this.value"></div>
+    <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${bjjDraft.mins}" onchange="bjjDraft.mins=this.value"></div></div>
+    <div class="rpewrap"><label>SESSION RPE (1-10)</label><div class="rpe">${srpeBtns}</div></div>
+    <div class="fld note"><input type="text" placeholder="note — sparring / drilling / ESD: alactic, lactic, tempo" value="${bjjDraft.note}" onchange="bjjDraft.note=this.value"></div>
+    <div style="margin-top:12px"><button class="save" style="font-size:16px;padding:12px" onclick="saveBJJ()">LOG</button></div></div>`;
+  if(S.bjj.length){
+    h+=`<div class="panel"><h3>HISTORY</h3>`;
+    for(const b of S.bjj.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20))
+      h+=`<div class="bjjrow"><span class="d">${b.date.slice(5)}</span><span>${b.note||"sparring"}</span><span>${b.mins}′ @${b.srpe}</span><button class="x" onclick="delBJJ('${b.id}')">×</button></div>`;
+    h+=`</div>`;
+  }
+  return h;
+}
+window.saveBJJ=async()=>{
+  if(!bjjDraft.mins||!bjjDraft.srpe){toast("Need mins + sRPE");return;}
+  S.bjj.push({id:"b"+Date.now(),date:bjjDraft.date,mins:+bjjDraft.mins,srpe:bjjDraft.srpe,note:bjjDraft.note});
+  reclassify();
+  const ok=await persist();
+  if(ok){bjjDraft={date:todayISO(),mins:"",srpe:null,note:""};toast("Logged");render();}
+  else S.bjj.pop();
+};
+window.delBJJ=async id=>{
+  const bak=S.bjj.slice();S.bjj=S.bjj.filter(b=>b.id!==id);
+  if(!await persist())S.bjj=bak;render();
+};
+
+/* ---- COACH tab ---- */
+function renderCoach(){
+  let h=`<div class="panel"><h3>WEEKLY REVIEW</h3>
+    <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:12px">Audits the ledger and returns structured proposals — each one applies to engine state on accept. Engine deterministic, coach discretionary, you decide.</div>
+    <button class="coachbtn" id="runReview" onclick="runReview()">RUN REVIEW</button>`;
+  const pend=(S.proposals||[]).map((p,i)=>({p,i})).filter(x=>x.p.state==="pending");
+  for(const{p,i}of pend){
+    const err=validateProposal(p);
+    let desc="";
+    if(p.type==="set_sub")desc=`Swap <b>${p.slot_id}</b> → ${p.exercise}`;
+    else if(p.type==="start_wave")desc=`Start wave on <b>${p.slot_id}</b>, TM ${p.tm}kg`;
+    else if(p.type==="exit_wave")desc=`Exit wave on <b>${p.slot_id}</b>`;
+    else if(p.type==="advance_ladder")desc=`Advance ladder on <b>${p.slot_id}</b>`;
+    else if(p.type==="start_deload")desc=`Start 7-day deload`;
+    else if(p.type==="override_load")desc=`Override <b>${p.exercise}</b> → ${p.load}kg next session`;
+    h+=`<div class="prop ${err?"invalid":""}"><div class="ptype">${p.type.replace(/_/g," ").toUpperCase()}${err?" — INVALID: "+err:""}</div>
+      ${desc}<br><span style="color:var(--muted)">${escapeHtml(p.reason||"")}</span>
+      <div class="pbtns">${err?"":`<button class="acc" onclick="acceptProposal(${i})">ACCEPT</button>`}<button class="dis" onclick="dismissProposal(${i})">dismiss</button></div></div>`;
+  }
+  if(S.lastReview)h+=`<div class="review"><div class="rdate">${S.lastReview.date}</div>${escapeHtml(S.lastReview.text)}</div>`;
+  h+=`</div>`;
+
+  /* ESD module */
+  const ph=esdPhase();
+  h+=`<div class="panel"><h3>ESD — ENERGY SYSTEMS</h3>
+    <div class="row" style="margin-top:0"><div class="fld"><label>COMP DATE</label><input type="date" value="${S.comp||""}" style="color-scheme:dark" onchange="setComp(this.value)"></div></div>`;
+  if(!ph){
+    h+=`<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px">Set a comp date to activate the phase planner. Until then: rotational primers are your alactic-power dose; add nothing else — lactic work doesn't coexist with a strength rebuild.</div>`;
+  }else{
+    h+=`<div class="esdphase">${ph.name} · ${ph.wksOut} WK OUT</div><div class="esdrx">${ph.rx}</div>`;
+    if(ph.wksOut<=6&&ph.wksOut>0&&weekNum(todayISO())<8)
+      h+=`<div class="esdrx" style="color:var(--breach)">CONFLICT — lactic block overlapping wk${weekNum(todayISO())} of the rebuild. Tendons aren't ready to hold strength AND absorb lactic work. Pick one: push the comp or accept the rebuild pausing here.</div>`;
+    h+=`<div class="esdrules">Interference rules: lactic sessions ≥24h before hard sparring, never stack with lower day · alactic power same-day with sparring is fine (before, not after) · log ESD sessions in the BJJ tab so they feed ACWR · strength maintenance during lactic block = 2×/wk, no progression attempts.</div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+window.setComp=async v=>{S.comp=v||null;await persist();render();};
+function escapeHtml(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+window.runReview=async()=>{
+  const btn=document.getElementById("runReview");
+  btn.disabled=true;btn.textContent="THINKING…";
+  const slotTable=[];
+  for(const d of Object.keys(SLOTS))for(const s of SLOTS[d])
+    slotTable.push({slot_id:s.id,day:d,role:s.role,current:curEx(s),allowed:(LIB[s.role]||[]).map(o=>o.n),ladder:s.ladder||null,model:s.model});
+  const payload={
+    week:weekNum(todayISO()),
+    rules:"Phase 1 rebuild: frozen-load RPE gate — +2.5kg upper/+5kg lower only when top-set RPE ≤7 on FRESH or PRE-BJJ day. POST-BJJ never counts. PRE-BJJ: no RPE9+ axial grinds <5h before sparring, grip caution pull days, avoid lower day pre-sparring. Wk1-2: volume -1/3, RPE7 cap (tendons, 1yr detrained). Stall = same load rising RPE 2 progression weeks → waves (5x5@80/5x4@85/6x3@90 TM, deload, TM+5). Pain 0-3: 3 once = hard stop+regress; ≥2 twice = regress. Ladders: squat box→Zercher-box(wk5)→Zercher(wk9); OHP landmine→seated DB(wk5)→barbell(wk9); advance needs week AND 14d symptom-clean. Injuries: L GH + old ACJ (banned: dips, wide grip, behind-neck, deep DB stretch, upright rows, front delt isolation). Deload trigger: 2 of {ACWR>1.4, ≥2 lifts RPE drift, pain≥2 in 7d}.",
+    slots:slotTable, substitutions:S.subs, waves:S.waves, deload:S.deload, overrides:S.overrides, comp:S.comp,
+    combined_acwr:combinedACWR(), bjj_acwr:bjjACWR(), rpe_drift_lifts:rpeDriftCount(),
+    gym_sessions:S.sessions.slice(-12),
+    bjj_last_28d:S.bjj.filter(b=>b.date>=daysAgo(28))
+  };
+  try{
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,
+        messages:[{role:"user",content:'You are the audit layer of a strength programme for a detrained powerlifter (old 140/140/180 @94kg, now ~83kg) training BJJ 2-3x/wk (brown belt). Audit the log for what deterministic rules miss: pain/click trends, RPE-at-load drift, flag misuse, ladder timing, load trajectory. User has elite gym knowledge — be direct and technical. Respond with ONLY valid JSON, no markdown fences, exactly this shape: {"status":"2-3 line assessment","flags":["most important first, cite log evidence"],"next_week":"per-lift deltas where you would override or confirm the engine","proposals":[{"type":"set_sub|start_wave|exit_wave|advance_ladder|start_deload|override_load","slot_id":"from slots table","exercise":"for set_sub (must be in that slot allowed list) or override_load","load":0,"tm":0,"reason":"one line"}]}. Only propose actions warranted by evidence; empty proposals array is fine. DATA: '+JSON.stringify(payload)}]})
+    });
+    const data=await resp.json();
+    let text=(data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n").trim();
+    text=text.replace(/```json|```/g,"").trim();
+    const j=JSON.parse(text);
+    S.lastReview={date:new Date().toISOString().slice(0,16).replace("T"," "),
+      text:"STATUS\n"+(j.status||"")+"\n\nFLAGS\n"+(j.flags||[]).map(f=>"• "+f).join("\n")+"\n\nNEXT WEEK\n"+(j.next_week||"")};
+    S.proposals=(j.proposals||[]).map(p=>({...p,state:"pending"}));
+    await persist();
+  }catch(e){toast("Review failed — retry");}
+  render();
+};
+
+/* ---- LOG tab (+ trends) ---- */
+function renderLog(){
+  let h=`<div class="logtools">
+    <button onclick="exportJSON()">EXPORT JSON</button>
+    <button onclick="importJSON()">IMPORT JSON</button>
+    <button onclick="resetAll()">RESET ALL</button></div>`;
+
+  /* trends */
+  let trendsRows="";
+  for(const d of Object.keys(SLOTS))for(const slot of SLOTS[d]){
+    if(slot.model!=="gate")continue;
+    const ex=curEx(slot);
+    const s=e1rmSeries(ex);
+    if(s.length<2)continue;
+    const delta=s[s.length-1]-s[0];
+    trendsRows+=`<div class="trend"><div class="tn">${ex}<small>e1RM · ${s.length} sessions</small></div>
+      ${spark(s,"#7FB2FF")}
+      <div class="tv">${Math.round(s[s.length-1])}<small class="${delta>=0?"up":"dn"}">${delta>=0?"+":""}${Math.round(delta)}</small></div></div>`;
+  }
+  /* bodyweight */
+  const bws=S.sessions.filter(s=>s.bw!=null).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>s.bw);
+  if(bws.length>=2){
+    const delta=bws[bws.length-1]-bws[0];
+    trendsRows+=`<div class="trend"><div class="tn">Bodyweight<small>${bws.length} readings</small></div>
+      ${spark(bws,"#4ADE9C")}
+      <div class="tv">${bws[bws.length-1].toFixed(1)}<small class="${delta>=0?"up":"dn"}">${delta>=0?"+":""}${delta.toFixed(1)}</small></div></div>`;
+  }else if(bws.length===1){
+    trendsRows+=`<div class="trend"><div class="tn">Bodyweight<small>1 reading</small></div><div></div><div class="tv">${bws[0].toFixed(1)}</div></div>`;
+  }
+  /* tonnage bars last 6 wks */
+  const tons=[];
+  for(let j=5;j>=0;j--)tons.push(tonnageBetween(daysAgo(7*j+6),daysAgo(7*j)));
+  const mx=Math.max(...tons,1);
+  let bars=`<div class="bars">`+tons.map(t=>`<div class="b" style="height:${Math.max(4,t/mx*100)}%"><span>${t>=1000?(t/1000).toFixed(1)+"t":t}</span></div>`).join("")+`</div>`;
+  bars+=`<div class="barlbl">`+[5,4,3,2,1,0].map(j=>`<div>${j===0?"now":"-"+j+"w"}</div>`).join("")+`</div>`;
+
+  if(trendsRows||S.sessions.length)
+    h+=`<div class="panel"><h3>TRENDS</h3>${trendsRows||'<div style="font-size:12px;color:var(--muted)">e1RM trends appear once lifts have 2+ logged sessions with load/reps/RPE.</div>'}
+      <div style="margin-top:14px;font-size:10px;color:var(--muted);letter-spacing:.08em">WEEKLY TONNAGE</div>${bars}</div>`;
+
+  if(!S.sessions.length)return h+`<div class="empty">No sessions logged yet.</div>`;
+  const sorted=S.sessions.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  for(const s of sorted){
+    const rows=s.entries.map(e=>{
+      const z="z-"+zone(e.rpe);
+      const pm=e.pain!=null&&e.pain>=2?` <span class="painmark p${e.pain}">${PAIN_LABELS[e.pain]}</span>`:"";
+      let r=`<div class="erow"><div class="n">${e.ex}${pm}</div><div class="v">${e.load!=null?e.load+"kg":"—"}</div><div class="v">${e.sets||"—"}${e.amrap?" A"+e.amrap:""}</div><div class="r ${z}">${e.rpe!=null?e.rpe:"—"}</div>`;
+      if(e.note)r+=`<div class="enote">${e.note}</div>`;
+      return r+`</div>`;}).join("");
+    const fb=s.flag==="fresh"?"fresh":(s.flag==="pre"?"pre":"bjj");
+    h+=`<div class="sess" id="s-${s.id}">
+      <div class="shead" onclick="document.getElementById('s-${s.id}').classList.toggle('open')">
+        <div class="l">${DAY_LABEL[s.day]||s.day}<small>${s.date} · wk${weekNum(s.date)}${s.mins?` · ${s.mins}′@${s.srpe||"?"}`:""}${s.bw?` · ${s.bw}kg`:""}</small></div>
+        <div class="fbadge ${fb}">${FLAG_LABELS[s.flag]||s.flag}</div>
+      </div>
+      <div class="sbody">${rows}<button class="del" onclick="delSession('${s.id}')">delete session</button></div>
+    </div>`;
+  }
+  return h;
+}
+
+/* ---- shared actions ---- */
+window.setView=v=>{view=v;render();window.scrollTo(0,0);};
+window.setF=(key,f,val)=>{
+  draft.entries[key]=draft.entries[key]||{};
+  if(f==="load")draft.entries[key][f]=val===""?null:parseFloat(val);
+  else if(f==="amrap")draft.entries[key][f]=val===""?null:parseInt(val);
+  else draft.entries[key][f]=val;
+};
+window.setRPE=(key,v)=>{draft.entries[key]=draft.entries[key]||{};draft.entries[key].rpe=(draft.entries[key].rpe===v)?null:v;render();};
+window.setPain=(key,v)=>{draft.entries[key]=draft.entries[key]||{};draft.entries[key].pain=(draft.entries[key].pain===v)?null:v;render();};
+window.addCustom=()=>{const n=prompt("Exercise name");if(n&&n.trim()){draft.custom[view].push(n.trim());render();}};
+window.saveSession=async()=>{
+  const entries=[];
+  for(const[key,d]of Object.entries(draft.entries)){
+    const i=key.indexOf("|");const day=key.slice(0,i),ex=key.slice(i+1);
+    if(day!==view)continue;
+    if(d.load==null&&!d.sets&&d.rpe==null&&d.pain==null&&d.amrap==null&&!d.note)continue;
+    entries.push({ex,load:d.load??null,sets:d.sets||"",amrap:d.amrap??null,rpe:d.rpe??null,pain:d.pain??null,note:d.note||""});
+  }
+  if(!entries.length){toast("Nothing filled in");return;}
+  S.sessions.push({id:"s"+Date.now(),date:draft.date,day:view,flag:draft.flag,
+    mins:draft.mins?+draft.mins:null,srpe:draft.srpe,bw:draft.bw?+draft.bw:null,entries});
+  advanceWaves(view,draft.flag);
+  for(const e of entries)delete S.overrides[e.ex]; /* coach overrides are one-session */
+  reclassify();
+  const ok=await persist();
+  if(ok){
+    for(const key of Object.keys(draft.entries))if(key.startsWith(view+"|"))delete draft.entries[key];
+    draft.custom[view]=[];draft.flag=null;draft.mins="";draft.srpe=null;draft.bw="";
+    toast("Session saved");render();
+  }else S.sessions.pop();
+};
+window.delSession=async id=>{
+  if(!confirm("Delete this session?"))return;
+  const bak=S.sessions.slice();S.sessions=S.sessions.filter(s=>s.id!==id);
+  if(!await persist())S.sessions=bak;render();
+};
+window.resetAll=async()=>{
+  if(!confirm("Wipe everything — sessions, BJJ, waves, subs, proposals, comp date?"))return;
+  const bak=JSON.stringify(S);
+  S={sessions:[],bjj:[],subs:{},waves:{},deload:null,overrides:{},proposals:[],comp:null,lastReview:null};
+  if(!await persist())S=JSON.parse(bak);render();
+};
+window.exportJSON=()=>{
+  const blob=JSON.stringify(S,null,2);
+  if(navigator.clipboard){navigator.clipboard.writeText(blob).then(()=>toast("Full state copied"));}
+  else prompt("Copy:",blob);
+};
+window.importJSON=async()=>{
+  const raw=prompt("Paste exported JSON (v1 array or v2/v3/v4 state):");
+  if(!raw)return;
+  try{
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))S.sessions=parsed;
+    else S=Object.assign({sessions:[],bjj:[],subs:{},waves:{},deload:null,overrides:{},proposals:[],comp:null,lastReview:null},parsed);
+    reclassify();
+    await persist();toast("Imported");render();
+  }catch(e){toast("Invalid JSON");}
+};
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200);}
+
+(async()=>{await boot();render();})();
+</script>
+</body>
+</html>

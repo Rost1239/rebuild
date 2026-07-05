@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>REBUILD — Training Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#101418; --surface:#1A2027; --surface2:#222A33; --line:#2C3540;
+    --text:#E8EDF2; --muted:#7D8894;
+    --cleared:#4ADE9C; --hold:#F5B04C; --breach:#F26D5B; --wave:#7FB2FF;
+    --cleared-dim:rgba(74,222,156,.12); --hold-dim:rgba(245,176,76,.12);
+    --breach-dim:rgba(242,109,91,.12); --wave-dim:rgba(127,178,255,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px}
+  #app{max-width:460px;margin:0 auto;padding:0 12px 120px}
+  .hdr{display:flex;align-items:baseline;justify-content:space-between;padding:16px 4px 8px}
+  .hdr h1{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:28px;letter-spacing:.06em}
+  .hdr h1 span{color:var(--cleared)}
+  .wk{font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .wk b{color:var(--text)}
+  .tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+  .tab{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.05em;text-align:center;
+       padding:10px 0;border:1px solid var(--line);border-radius:8px;color:var(--muted);cursor:pointer;background:var(--surface)}
+  .tab.on{color:var(--bg);background:var(--text);border-color:var(--text)}
+  .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--wave);margin-left:4px;vertical-align:middle}
+  .sbar{display:flex;gap:8px;align-items:center;margin:12px 0 8px;flex-wrap:wrap}
+  .sbar input[type=date]{background:var(--surface);border:1px solid var(--line);color:var(--text);
+       font-family:inherit;font-size:13px;padding:9px 10px;border-radius:8px;flex:1;min-width:130px;color-scheme:dark}
+  .flag{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .flag button{background:var(--surface);border:0;color:var(--muted);font-family:inherit;font-size:11px;padding:10px 10px;cursor:pointer}
+  .flag button.on{background:var(--surface2);color:var(--text);font-weight:600}
+  .flag button.on.pre{color:var(--wave)}
+  .flag button.on.post{color:var(--hold)}
+  .ramp{font-size:11px;color:var(--hold);padding:2px 4px 8px;letter-spacing:.02em;line-height:1.5}
+  .ramp.blue{color:var(--wave)}
+  .banner{margin:0 0 10px;padding:11px 12px;border-radius:10px;font-size:11px;line-height:1.55}
+  .banner.deload{border:1px solid rgba(242,109,91,.45);background:var(--breach-dim);color:var(--breach)}
+  .banner.deload-on{border:1px solid rgba(127,178,255,.45);background:var(--wave-dim);color:var(--wave)}
+  .banner button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:7px 10px;margin-top:8px;cursor:pointer;margin-right:8px}
+  .banner.deload button{background:var(--breach);color:var(--bg)}
+  .banner.deload-on button{background:none;color:var(--wave);text-decoration:underline;padding:0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .exname{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:19px;letter-spacing:.03em;line-height:1.15}
+  .target{font-size:11px;color:var(--muted);margin-top:3px}
+  .swap{background:none;border:1px solid var(--line);color:var(--muted);font-family:inherit;font-size:10px;
+       padding:4px 8px;border-radius:6px;cursor:pointer;flex-shrink:0;letter-spacing:.05em}
+  .chip{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;padding:4px 8px;border-radius:20px;margin-top:8px}
+  .chip.cleared{color:var(--cleared);background:var(--cleared-dim)}
+  .chip.hold{color:var(--hold);background:var(--hold-dim)}
+  .chip.breach{color:var(--breach);background:var(--breach-dim)}
+  .chip.wave{color:var(--wave);background:var(--wave-dim)}
+  .chip.none{color:var(--muted);background:var(--surface2)}
+  .last{font-size:11px;color:var(--muted);margin-top:6px}
+  .last b{color:var(--text);font-weight:500}
+  .stall{margin-top:8px;padding:9px 10px;border:1px solid rgba(127,178,255,.4);border-radius:8px;background:var(--wave-dim);font-size:11px;color:var(--wave);line-height:1.5}
+  .stall.pain{border-color:rgba(242,109,91,.4);background:var(--breach-dim);color:var(--breach)}
+  .stall.ladder{border-color:rgba(74,222,156,.4);background:var(--cleared-dim);color:var(--cleared)}
+  .stall button{background:var(--wave);color:var(--bg);border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;
+       padding:6px 10px;margin-top:7px;cursor:pointer;margin-right:8px}
+  .stall.pain button{background:var(--breach)}
+  .stall.ladder button{background:var(--cleared)}
+  .stall .ghost{background:none;color:inherit;text-decoration:underline;padding:6px 0}
+  .wexit{background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px;font-family:inherit}
+  .row{display:flex;gap:8px;margin-top:10px}
+  .fld{flex:1}
+  .fld label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
+  .fld input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
+       font-family:inherit;font-size:15px;padding:10px;border-radius:8px}
+  .fld input:focus{outline:none;border-color:var(--muted)}
+  .fld.load{flex:0 0 84px}
+  .fld.amrap{flex:0 0 74px}
+  .rpewrap{margin-top:10px}
+  .rpewrap label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:5px}
+  .rpe{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .rpe::-webkit-scrollbar{display:none}
+  .rpe button{flex:0 0 auto;min-width:44px;padding:9px 0;border-radius:8px;border:1px solid var(--line);
+       background:var(--bg);color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer}
+  .rpe button.z-c{border-color:rgba(74,222,156,.35)}
+  .rpe button.z-h{border-color:rgba(245,176,76,.35)}
+  .rpe button.z-b{border-color:rgba(242,109,91,.35)}
+  .rpe button.on.z-c{background:var(--cleared);color:var(--bg);border-color:var(--cleared);font-weight:600}
+  .rpe button.on.z-h{background:var(--hold);color:var(--bg);border-color:var(--hold);font-weight:600}
+  .rpe button.on.z-b{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
+  .painrow{display:flex;gap:5px;margin-top:8px}
+  .painrow button{flex:1;padding:8px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg);
+       color:var(--muted);font-family:inherit;font-size:10px;letter-spacing:.05em;cursor:pointer}
+  .painrow button.on.p0{background:var(--cleared);color:var(--bg);border-color:var(--cleared);font-weight:600}
+  .painrow button.on.p1{background:var(--surface2);color:var(--text);border-color:var(--muted);font-weight:600}
+  .painrow button.on.p2{background:var(--hold);color:var(--bg);border-color:var(--hold);font-weight:600}
+  .painrow button.on.p3{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
+  .note input{margin-top:10px}
+  .addex{width:100%;background:none;border:1px dashed var(--line);color:var(--muted);font-family:inherit;
+       font-size:13px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px}
+  .sessmeta{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .sessmeta .lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px}
+  .savebar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(transparent,var(--bg) 30%);padding:18px 12px 20px;z-index:6}
+  .savebar .inner{max-width:460px;margin:0 auto}
+  .save{width:100%;background:var(--cleared);color:var(--bg);border:0;border-radius:10px;
+       font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.1em;padding:15px;cursor:pointer}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface2);
+       border:1px solid var(--line);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10;max-width:85%}
+  .toast.show{opacity:1}
+  .modal{position:fixed;inset:0;background:rgba(10,13,16,.85);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-width:460px;
+       max-height:70vh;overflow-y:auto;padding:16px}
+  .sheet h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.05em;margin-bottom:4px}
+  .sheet .sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+  .opt{padding:13px 10px;border-bottom:1px solid rgba(44,53,64,.5);cursor:pointer;font-size:14px}
+  .opt small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .opt.cur{color:var(--cleared)}
+  .sheet .cancel{width:100%;margin-top:12px;background:var(--surface2);border:0;color:var(--muted);
+       font-family:inherit;padding:12px;border-radius:8px;cursor:pointer}
+  .sess{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .sess .shead{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;cursor:pointer}
+  .sess .shead .l{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:17px;letter-spacing:.04em}
+  .sess .shead .l small{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:400;margin-left:8px}
+  .fbadge{font-size:10px;padding:3px 8px;border-radius:20px;letter-spacing:.05em}
+  .fbadge.fresh{color:var(--cleared);background:var(--cleared-dim)}
+  .fbadge.pre{color:var(--wave);background:var(--wave-dim)}
+  .fbadge.bjj{color:var(--hold);background:var(--hold-dim)}
+  .sbody{border-top:1px solid var(--line);padding:6px 14px 12px;display:none}
+  .sess.open .sbody{display:block}
+  .erow{display:grid;grid-template-columns:1fr 58px 74px 44px;gap:6px;padding:7px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:baseline}
+  .erow:last-of-type{border-bottom:0}
+  .erow .n{color:var(--text)} .erow .v{color:var(--muted);text-align:right} .erow .r{text-align:right;font-weight:600}
+  .r.z-c{color:var(--cleared)} .r.z-h{color:var(--hold)} .r.z-b{color:var(--breach)} .r.z-n{color:var(--muted);font-weight:400}
+  .painmark{font-size:10px;font-weight:600}
+  .painmark.p2{color:var(--hold)} .painmark.p3{color:var(--breach)}
+  .enote{grid-column:1/-1;font-size:11px;color:var(--muted);padding-bottom:4px;font-style:italic}
+  .del{background:none;border:0;color:var(--breach);font-family:inherit;font-size:11px;cursor:pointer;padding:8px 0 2px;letter-spacing:.05em}
+  .logtools{display:flex;gap:8px;margin:14px 0}
+  .logtools button{flex:1;background:var(--surface);border:1px solid var(--line);color:var(--muted);
+       font-family:inherit;font-size:11px;padding:11px 4px;border-radius:8px;cursor:pointer;letter-spacing:.02em}
+  .empty{color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
+  .loading{color:var(--muted);text-align:center;padding:60px 0;font-size:13px}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .panel h3{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.06em;margin-bottom:10px;color:var(--muted)}
+  .stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:13px}
+  .stat:last-child{border-bottom:0}
+  .stat .k{color:var(--muted)} .stat .v{font-weight:600}
+  .v.ok{color:var(--cleared)} .v.warn{color:var(--hold)} .v.bad{color:var(--breach)}
+  .bjjrow{display:grid;grid-template-columns:80px 1fr 50px 30px;gap:6px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:center}
+  .bjjrow .d{color:var(--muted)} .bjjrow .x{background:none;border:0;color:var(--breach);cursor:pointer;font-family:inherit}
+  .coachbtn{width:100%;background:var(--wave);color:var(--bg);border:0;border-radius:10px;
+       font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.08em;padding:13px;cursor:pointer;margin-bottom:8px}
+  .review{font-size:13px;line-height:1.65;white-space:pre-wrap;margin-top:12px}
+  .review .rdate{font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px}
+  .prop{border:1px solid rgba(127,178,255,.35);background:var(--wave-dim);border-radius:10px;padding:11px 12px;margin-top:10px;font-size:12px;line-height:1.55}
+  .prop .ptype{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--wave);margin-bottom:3px}
+  .prop .pbtns{margin-top:8px}
+  .prop button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:7px 12px;cursor:pointer;margin-right:8px}
+  .prop .acc{background:var(--cleared);color:var(--bg)}
+  .prop .dis{background:none;color:var(--muted);text-decoration:underline}
+  .prop.invalid{border-color:var(--line);background:var(--surface2);color:var(--muted)}
+  .trend{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5)}
+  .trend:last-child{border-bottom:0}
+  .trend .tn{flex:1;font-size:12px}
+  .trend .tn small{display:block;color:var(--muted);font-size:10px}
+  .trend svg{flex:0 0 100px}
+  .trend .tv{flex:0 0 70px;text-align:right;font-size:13px;font-weight:600}
+  .trend .tv small{display:block;font-size:10px;font-weight:400}
+  .tv small.up{color:var(--cleared)} .tv small.dn{color:var(--breach)}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:60px;margin-top:6px}
+  .bars .b{flex:1;background:var(--wave-dim);border:1px solid rgba(127,178,255,.3);border-radius:4px 4px 0 0;position:relative}
+  .bars .b span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted)}
+  .barlbl{display:flex;gap:6px;margin-top:4px}
+  .barlbl div{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+  .esdphase{font-family:'Barlow Condensed',sans-serif;font-size:22px;letter-spacing:.05em;color:var(--wave);margin:6px 0}
+  .esdrx{font-size:12px;color:var(--text);line-height:1.7;margin-top:8px}
+  .esdrx b{color:var(--wave)}
+  .esdrules{font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading engine…</div></div>
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script type="module">
+import * as E from "./src/engine.js";
+import { storage } from "./src/storage.js";
+
+const { SLOTS, LIB, LADDERS, DAY_LABEL, RPE_VALUES, PAIN_LABELS, FLAG_LABELS } = E;
+
+const SEED = [{ id: "seed-2026-07-05", date: "2026-07-05", day: "push", flag: "fresh", mins: 60, srpe: 6, bw: null, entries: [
+  { ex: "Landmine rotational punch", load: 10, sets: "3x3/side", rpe: 5, pain: 0, note: "" },
+  { ex: "Bench press", load: 80, sets: "4x4", rpe: 8.5, pain: 0, note: "Cap breach — hold 80 until ≤7 fresh" },
+  { ex: "Half-kneeling landmine press", load: 10, sets: "3x8/side", rpe: 6.5, pain: 0, note: "Acclim reps; 4×5-6 from wk3" },
+  { ex: "Cable lateral raise (behind-back)", load: 5, sets: "2x15", rpe: null, pain: 0, note: "Started 10kg, dropped — wk1 volume" },
+  { ex: "Bottoms-up KB press", load: 8, sets: "3x8/side", rpe: 6.5, pain: 1, note: "L ACJ click fading by set 4 — retest wk2" },
+  { ex: "OH cable triceps extension", load: 30, sets: "3x12", rpe: 7, pain: 0, note: "First set 40×12" },
+  { ex: "Face pull (seated)", load: 20, sets: "1x15", rpe: 5.5, pain: 0, note: "2×15@15 form work; 20-25 next" }] }];
+
+let S = E.newState();
+let view = "push";
+let draft = { date: E.todayISO(), flag: null, entries: {}, custom: { push: [], lower: [], pull: [] }, mins: "", srpe: null, bw: "" };
+let bjjDraft = { date: E.todayISO(), mins: "", srpe: null, note: "" };
+
+async function boot() {
+  try {
+    const r = await storage.get("rebuild-state");
+    S = Object.assign(E.newState(), JSON.parse(r.value));
+  } catch (e) { /* fresh install */ }
+  if (!S.sessions.length) { S.sessions = SEED.slice(); await persist(); }
+  if (E.reclassify(S)) await persist();
+}
+async function persist() {
+  try { await storage.set("rebuild-state", JSON.stringify(S)); return true; }
+  catch (e) { toast("Save failed — retry"); return false; }
+}
+
+/* ---------- coach copy/paste flow (keyless environments) ---------- */
+function coachPayload() {
+  const slotTable = [];
+  for (const d of Object.keys(SLOTS)) for (const s of SLOTS[d])
+    slotTable.push({ slot_id: s.id, day: d, role: s.role, current: E.curEx(S, s), allowed: (LIB[s.role] || []).map(o => o.n), ladder: s.ladder || null, model: s.model });
+  return {
+    week: E.weekNum(S), slots: slotTable, substitutions: S.subs, waves: S.waves, deload: S.deload,
+    overrides: S.overrides, comp: S.comp,
+    combined_acwr: E.combinedACWR(S), bjj_acwr: E.bjjACWR(S), rpe_drift_lifts: E.rpeDriftCount(S),
+    gym_sessions: S.sessions.slice(-12), bjj_last_28d: S.bjj.filter(b => b.date >= E.daysAgo(28))
+  };
+}
+const COACH_PROMPT = 'You are the audit layer of a strength programme for a detrained powerlifter (old 140/140/180 @94kg, now ~83kg) training BJJ 2-3x/wk (brown belt). Audit the log for what deterministic rules miss: pain/click trends, RPE-at-load drift, flag misuse, ladder timing, load trajectory. User has elite gym knowledge — be direct and technical. Respond with ONLY valid JSON, no markdown fences, exactly this shape: {"status":"2-3 line assessment","flags":["most important first, cite log evidence"],"next_week":"per-lift deltas where you would override or confirm the engine","proposals":[{"type":"set_sub|start_wave|exit_wave|advance_ladder|start_deload|override_load","slot_id":"from slots table","exercise":"for set_sub (must be in that slot allowed list) or override_load","load":0,"tm":0,"reason":"one line"}]}. Only propose actions warranted by evidence; empty proposals array is fine. DATA: ';
+
+window.copyReviewPayload = () => {
+  const text = COACH_PROMPT + JSON.stringify(coachPayload());
+  navigator.clipboard.writeText(text).then(() => toast("Payload copied — paste into Claude, then paste the JSON reply back"));
+};
+window.pasteReviewResponse = async () => {
+  const raw = prompt("Paste the JSON response from Claude:");
+  if (!raw) return;
+  try {
+    const j = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    S.lastReview = { date: new Date().toISOString().slice(0, 16).replace("T", " "),
+      text: "STATUS\n" + (j.status || "") + "\n\nFLAGS\n" + (j.flags || []).map(f => "• " + f).join("\n") + "\n\nNEXT WEEK\n" + (j.next_week || "") };
+    S.proposals = (j.proposals || []).map(p => ({ ...p, state: "pending" }));
+    await persist(); render();
+  } catch (e) { toast("Invalid JSON"); }
+};
+window.acceptProposal = async idx => {
+  const p = S.proposals[idx]; if (!p || p.state !== "pending") return;
+  const err = E.applyProposal(S, p);
+  p.state = err ? "invalid" : "accepted";
+  await persist(); render(); if (!err) toast("Applied");
+};
+window.dismissProposal = async idx => {
+  if (S.proposals[idx]) { S.proposals[idx].state = "dismissed"; await persist(); render(); }
+};
+function pendingCount() { return (S.proposals || []).filter(p => p.state === "pending").length; }
+
+/* ---------- render ---------- */
+function render() {
+  const app = document.getElementById("app");
+  const wk = E.weekNum(S, draft.date);
+  let h = `<div class="hdr"><h1>RE<span>BUILD</span></h1><div class="wk">WK <b>${wk}</b> · ${S.sessions.length} GYM · ${S.bjj.length} BJJ</div></div>`;
+  h += `<div class="tabs">`;
+  for (const d of ["push", "lower", "pull"]) h += `<div class="tab ${view === d ? "on" : ""}" onclick="setView('${d}')">${DAY_LABEL[d]}</div>`;
+  h += `<div class="tab ${view === "bjj" ? "on" : ""}" onclick="setView('bjj')">BJJ</div>`;
+  h += `<div class="tab ${view === "log" ? "on" : ""}" onclick="setView('log')">LOG</div>`;
+  h += `<div class="tab ${view === "coach" ? "on" : ""}" onclick="setView('coach')">COACH${pendingCount() ? '<span class="dot"></span>' : ""}</div></div>`;
+
+  if (view === "log") { app.innerHTML = h + renderLog(); return; }
+  if (view === "bjj") { app.innerHTML = h + renderBJJ(); return; }
+  if (view === "coach") { app.innerHTML = h + renderCoach(); return; }
+
+  const rolledToday = S.bjj.some(b => b.date === draft.date);
+  if (draft.flag === null) draft.flag = rolledToday ? "bjj" : "fresh";
+
+  h += `<div class="sbar">
+    <input type="date" value="${draft.date}" onchange="draft.date=this.value;draft.flag=null;render()">
+    <div class="flag">
+      <button class="${draft.flag === "fresh" ? "on" : ""}" onclick="draft.flag='fresh';render()">FRESH</button>
+      <button class="${draft.flag === "pre" ? "on pre" : ""}" onclick="draft.flag='pre';render()">PRE-BJJ</button>
+      <button class="${draft.flag === "bjj" ? "on post" : ""}" onclick="draft.flag='bjj';render()">POST-BJJ</button>
+    </div></div>`;
+
+  if (E.isDeload(S)) {
+    h += `<div class="banner deload-on">DELOAD ACTIVE until ${S.deload.until} — all loads ~60%, sets -⅓, RPE ≤6, no grinds. Waves paused.<button onclick="endDeload()">end early</button></div>`;
+  } else {
+    const ds = E.deloadSignal(S);
+    if (ds.fire) h += `<div class="banner deload">DELOAD PROPOSED — ${ds.reasons.join(" · ")}.<button onclick="startDeload()">ACTIVATE 7-DAY DELOAD</button></div>`;
+  }
+
+  if (draft.flag === "pre") {
+    h += `<div class="ramp blue">PRE-BJJ — counts for progression, but: no RPE 9+ axial grinds if sparring <5h out · primers stay in.`
+      + (view === "pull" ? ` GRIP WARNING — cap pull-ups/carries or use straps.` : "")
+      + (view === "lower" ? ` LOWER PRE-SPARRING — strongly reconsider.` : "")
+      + `</div>`;
+  }
+  if (draft.flag === "bjj") h += `<div class="ramp">POST-BJJ — target RPE, take resulting load. Doesn't count toward progression. Drop primers.</div>`;
+  if (wk <= 2) h += `<div class="ramp">WK ${wk} RAMP — sets cut ~⅓, RPE 7 cap, nothing grinds</div>`;
+
+  for (const slot of SLOTS[view]) h += renderSlot(slot);
+  for (const c of draft.custom[view]) h += renderCustom(c);
+  h += `<button class="addex" onclick="addCustom()">+ add exercise to this session</button>`;
+
+  let srpeBtns = "";
+  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${draft.srpe === i ? "on" : ""}" onclick="setDraftSrpe(${i})">${i}</button>`;
+  h += `<div class="sessmeta"><div class="lbl">SESSION LOAD + BODYWEIGHT</div>
+    <div class="row" style="margin-top:0">
+      <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="draft.mins=this.value"></div>
+      <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="draft.bw=this.value"></div>
+      <div class="fld"><label>SESSION RPE</label><div class="rpe">${srpeBtns}</div></div></div></div>`;
+
+  h += `<div class="savebar"><div class="inner"><button class="save" onclick="saveSession()">SAVE SESSION</button></div></div>`;
+  app.innerHTML = h;
+}
+
+function inputBlock(key, d) {
+  let rpeBtns = RPE_VALUES.map(v => {
+    const z = "z-" + E.zone(v); const on = d.rpe === v ? "on" : "";
+    return `<button class="${z} ${on}" onclick="setRPE('${key}',${v})">${v}</button>`; }).join("");
+  let painBtns = PAIN_LABELS.map((l, i) =>
+    `<button class="p${i} ${d.pain === i ? "on p" + i : ""}" onclick="setPain('${key}',${i})">${l}</button>`).join("");
+  return `<div class="row">
+      <div class="fld load"><label>LOAD KG</label><input type="number" inputmode="decimal" step="0.5" value="${d.load ?? ""}" onchange="setF('${key}','load',this.value)"></div>
+      <div class="fld"><label>SETS × REPS</label><input type="text" placeholder="e.g. 4x4" value="${d.sets ?? ""}" onchange="setF('${key}','sets',this.value)"></div>
+      <div class="fld amrap"><label>AMRAP</label><input type="number" inputmode="numeric" placeholder="—" value="${d.amrap ?? ""}" onchange="setF('${key}','amrap',this.value)"></div>
+    </div>
+    <div class="rpewrap"><label>TOP-SET RPE</label><div class="rpe">${rpeBtns}</div></div>
+    <div class="rpewrap" style="margin-top:8px"><label>JOINT / TISSUE</label><div class="painrow">${painBtns}</div></div>
+    <div class="fld note"><input type="text" placeholder="note" value="${d.note ?? ""}" onchange="setF('${key}','note',this.value)"></div>`;
+}
+
+function renderSlot(slot) {
+  const ex = E.curEx(S, slot);
+  const key = view + "|" + ex;
+  const d = draft.entries[key] || {};
+  const rec = E.recommend(S, slot);
+  const h1 = E.historyFor(S, ex, 1);
+  let e1txt = "";
+  if (h1.length) { const v = E.bestE1RM(h1[0].e); if (v != null && slot.model === "gate") e1txt = ` · e1RM ~${Math.round(v)}`; }
+  const lastTxt = h1.length ? `last <b>${h1[0].e.load != null ? h1[0].e.load + "kg" : "—"} · ${h1[0].e.sets || "—"}${h1[0].e.amrap ? " A" + h1[0].e.amrap : ""} · ${h1[0].e.rpe != null ? "RPE " + h1[0].e.rpe : "no RPE"}${h1[0].e.pain != null && h1[0].e.pain >= 2 ? " · " + PAIN_LABELS[h1[0].e.pain] : ""}</b>${e1txt} (${h1[0].date.slice(5)})` : "no history";
+  const w = S.waves[slot.id];
+  let extras = "";
+
+  const ps = E.painState(S, slot);
+  if (ps) {
+    let btn = "";
+    if (slot.regressTo) btn = `<button onclick="applySub('${slot.id}','${slot.regressTo.replace(/'/g, "\\'")}')">REGRESS → ${slot.regressTo}</button>`;
+    else if (slot.ladder) {
+      const L = LADDERS[slot.ladder]; const r = L.rungs.indexOf(ex);
+      if (r > 0) btn = `<button onclick="applySub('${slot.id}','${L.rungs[r - 1].replace(/'/g, "\\'")}')">RUNG DOWN → ${L.rungs[r - 1]}</button>`;
+    }
+    if (!btn) btn = `<button onclick="openSub('${slot.id}','${view}')">SWAP MOVEMENT</button>`;
+    extras += `<div class="stall pain">${ps.txt}${btn}<button class="ghost" onclick="render()">keep as is</button></div>`;
+  }
+  const ls = E.ladderStatus(S, slot);
+  if (ls && ls.eligible && !ps)
+    extras += `<div class="stall ladder">LADDER — wk + symptom criteria met. Next rung: ${ls.next}.<button onclick="doAdvanceLadder('${slot.id}','${view}')">ADVANCE</button><button class="ghost" onclick="render()">later</button></div>`;
+  if (!w && slot.model === "gate" && E.stallDetected(S, slot) && !ps)
+    extras += `<div class="stall">STALL — same load, RPE rising 2 progression weeks. Linear phase over.<button onclick="doStartWave('${slot.id}','${view}')">SWITCH TO WAVES</button></div>`;
+
+  const waveExit = w && w.active ? `<button class="wexit" onclick="doExitWave('${slot.id}')">exit wave</button>` : "";
+  return `<div class="card">
+    <div class="top"><div><div class="exname">${ex}</div><div class="target">${slot.t}</div></div>
+    <button class="swap" onclick="openSub('${slot.id}','${view}')">SWAP</button></div>
+    <div><span class="chip ${rec.cls}">${rec.txt}</span>${waveExit}</div>
+    <div class="last">${lastTxt}</div>
+    ${extras}
+    ${inputBlock(key, d)}
+  </div>`;
+}
+function renderCustom(name) {
+  const key = view + "|" + name;
+  const d = draft.entries[key] || {};
+  return `<div class="card">
+    <div class="top"><div><div class="exname">${name}</div><div class="target">custom — this session</div></div></div>
+    ${inputBlock(key, d)}
+  </div>`;
+}
+
+window.openSub = (slotId, day) => {
+  const slot = SLOTS[day].find(s => s.id === slotId);
+  const cur = E.curEx(S, slot);
+  const opts = LIB[slot.role] || [];
+  let h = `<div class="modal" onclick="closeSub(event)"><div class="sheet" onclick="event.stopPropagation()">
+    <h3>SWAP — ${slot.role.replace(/_/g, " ").toUpperCase()}</h3>
+    <div class="sub">Same slot role · banned movements excluded · history follows the exercise</div>`;
+  for (const o of opts)
+    h += `<div class="opt ${o.n === cur ? "cur" : ""}" onclick="applySub('${slotId}','${o.n.replace(/'/g, "\\'")}')">${o.n}${o.n === cur ? " ✓" : ""}<small>${o.d}</small></div>`;
+  h += `<button class="cancel" onclick="closeSub()">cancel</button></div></div>`;
+  document.getElementById("modalRoot").innerHTML = h;
+};
+window.closeSub = e => { if (e && e.target && !e.target.classList.contains("modal")) return; document.getElementById("modalRoot").innerHTML = ""; };
+window.applySub = async (slotId, name) => {
+  S.subs[slotId] = name;
+  delete S.waves[slotId];
+  await persist();
+  document.getElementById("modalRoot").innerHTML = "";
+  render();
+};
+window.doAdvanceLadder = async (slotId, day) => {
+  const slot = SLOTS[day].find(s => s.id === slotId);
+  const next = E.advanceLadder(S, slot);
+  if (next) { await persist(); render(); toast("Advanced → " + next + ". New baseline — first session RPE-capped."); }
+};
+window.doStartWave = async (slotId, day) => {
+  const slot = SLOTS[day].find(s => s.id === slotId);
+  const w = E.startWave(S, slot);
+  if (w) { await persist(); render(); toast("Wave started — TM " + w.tm + "kg"); }
+};
+window.doExitWave = async slotId => { delete S.waves[slotId]; await persist(); render(); };
+window.startDeload = async () => { E.startDeload(S); await persist(); render(); toast("Deload active for 7 days"); };
+window.endDeload = async () => { S.deload = null; await persist(); render(); };
+
+function renderBJJ() {
+  const rc = E.combinedACWR(S), rb = E.bjjACWR(S);
+  const cls = v => v == null ? "" : (v > 1.5 ? "bad" : (v > 1.3 ? "warn" : "ok"));
+  let srpeBtns = "";
+  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${bjjDraft.srpe === i ? "on" : ""}" onclick="setBjjSrpe(${i})">${i}</button>`;
+  let h = `<div class="panel"><h3>ATHLETE LOAD</h3>
+    <div class="stat"><span class="k">Combined ACWR (gym+BJJ)</span><span class="v ${cls(rc)}">${rc == null ? "— (need history)" : rc.toFixed(2)}</span></div>
+    <div class="stat"><span class="k">BJJ-only ACWR</span><span class="v ${cls(rb)}">${rb == null ? "—" : rb.toFixed(2)}</span></div>
+    <div class="stat"><span class="k">Gym tonnage (7d)</span><span class="v">${E.weekTonnage(S).toLocaleString()} kg</span></div>
+    <div class="stat"><span class="k">BJJ sessions (7d)</span><span class="v">${S.bjj.filter(b => b.date >= E.daysAgo(7)).length}</span></div></div>`;
+  h += `<div class="panel"><h3>LOG A ROLL / ESD SESSION</h3>
+    <div class="row"><div class="fld"><label>DATE</label><input type="date" value="${bjjDraft.date}" style="color-scheme:dark" onchange="bjjDraft.date=this.value"></div>
+    <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${bjjDraft.mins}" onchange="bjjDraft.mins=this.value"></div></div>
+    <div class="rpewrap"><label>SESSION RPE (1-10)</label><div class="rpe">${srpeBtns}</div></div>
+    <div class="fld note"><input type="text" placeholder="note — sparring / drilling / ESD: alactic, lactic, tempo" value="${bjjDraft.note}" onchange="bjjDraft.note=this.value"></div>
+    <div style="margin-top:12px"><button class="save" style="font-size:16px;padding:12px" onclick="saveBJJ()">LOG</button></div></div>`;
+  if (S.bjj.length) {
+    h += `<div class="panel"><h3>HISTORY</h3>`;
+    for (const b of S.bjj.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20))
+      h += `<div class="bjjrow"><span class="d">${b.date.slice(5)}</span><span>${b.note || "sparring"}</span><span>${b.mins}′ @${b.srpe}</span><button class="x" onclick="delBJJ('${b.id}')">×</button></div>`;
+    h += `</div>`;
+  }
+  return h;
+}
+window.setBjjSrpe = i => { bjjDraft.srpe = bjjDraft.srpe === i ? null : i; render(); };
+window.setDraftSrpe = i => { draft.srpe = draft.srpe === i ? null : i; render(); };
+window.saveBJJ = async () => {
+  if (!bjjDraft.mins || !bjjDraft.srpe) { toast("Need mins + sRPE"); return; }
+  S.bjj.push({ id: "b" + Date.now(), date: bjjDraft.date, mins: +bjjDraft.mins, srpe: bjjDraft.srpe, note: bjjDraft.note });
+  E.reclassify(S);
+  const ok = await persist();
+  if (ok) { bjjDraft = { date: E.todayISO(), mins: "", srpe: null, note: "" }; toast("Logged"); render(); }
+  else S.bjj.pop();
+};
+window.delBJJ = async id => {
+  const bak = S.bjj.slice(); S.bjj = S.bjj.filter(b => b.id !== id);
+  if (!await persist()) S.bjj = bak; render();
+};
+
+function esdRxCopy(name) {
+  const RX = {
+    "COMP WEEK": "<b>Nothing new.</b> One alactic-power touch early week (6×6s max efforts, full rest). Strength: one light full-body session ≤RPE6.",
+    "TAPER": "<b>Alactic power only</b> — 2×/wk: 8×6-8s max efforts, rest 1:12+, stop while fast. No lactic work. Strength 2×/wk at 70-80% loads, sets -⅓, zero grinds.",
+    "LACTIC CAPACITY BLOCK": "<b>1-2×/wk lactic capacity</b>: 40-90s all-out × 3-5 reps, rest 1:3-4. ≥24h before hard sparring. <b>1×/wk alactic capacity</b>: 10s/50s × 5-6, 2-3 series. <b>Strength → 2×/wk maintenance</b> at 80-85%, no progression attempts.",
+    "ALACTIC BLOCK": "<b>2×/wk alactic</b>. Day A power: 8-10 × 6-10s max efforts, rest 1:10-12. Day B capacity: 10s/50s × 5-6, 3 series. Primers already count as power touches. Optional 1×/wk tempo 20-30min HR 130-150.",
+    "AEROBIC BASE": "<b>1-2×/wk low-intensity</b>: 20-40min HR 130-150 or 15s on/45s easy × 20. Strength rebuild runs untouched.",
+    "COMP PASSED": "Clear the comp date or set the next one."
+  };
+  return RX[name] || "";
+}
+
+function renderCoach() {
+  let h = `<div class="panel"><h3>WEEKLY REVIEW</h3>
+    <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:12px">Keyless flow: copy the payload → paste into Claude → paste the JSON reply back. Proposals apply to engine state on accept. (Serverless proxy = backlog item 5.)</div>
+    <button class="coachbtn" onclick="copyReviewPayload()">COPY REVIEW PAYLOAD</button>
+    <button class="coachbtn" style="background:var(--surface2);color:var(--text)" onclick="pasteReviewResponse()">PASTE RESPONSE</button>`;
+  const pend = (S.proposals || []).map((p, i) => ({ p, i })).filter(x => x.p.state === "pending");
+  for (const { p, i } of pend) {
+    const err = E.validateProposal(S, p);
+    let desc = "";
+    if (p.type === "set_sub") desc = `Swap <b>${p.slot_id}</b> → ${p.exercise}`;
+    else if (p.type === "start_wave") desc = `Start wave on <b>${p.slot_id}</b>, TM ${p.tm}kg`;
+    else if (p.type === "exit_wave") desc = `Exit wave on <b>${p.slot_id}</b>`;
+    else if (p.type === "advance_ladder") desc = `Advance ladder on <b>${p.slot_id}</b>`;
+    else if (p.type === "start_deload") desc = `Start 7-day deload`;
+    else if (p.type === "override_load") desc = `Override <b>${p.exercise}</b> → ${p.load}kg next session`;
+    h += `<div class="prop ${err ? "invalid" : ""}"><div class="ptype">${(p.type || "").replace(/_/g, " ").toUpperCase()}${err ? " — INVALID: " + err : ""}</div>
+      ${desc}<br><span style="color:var(--muted)">${escapeHtml(p.reason || "")}</span>
+      <div class="pbtns">${err ? "" : `<button class="acc" onclick="acceptProposal(${i})">ACCEPT</button>`}<button class="dis" onclick="dismissProposal(${i})">dismiss</button></div></div>`;
+  }
+  if (S.lastReview) h += `<div class="review"><div class="rdate">${S.lastReview.date}</div>${escapeHtml(S.lastReview.text)}</div>`;
+  h += `</div>`;
+
+  const ph = E.esdPhase(S);
+  h += `<div class="panel"><h3>ESD — ENERGY SYSTEMS</h3>
+    <div class="row" style="margin-top:0"><div class="fld"><label>COMP DATE</label><input type="date" value="${S.comp || ""}" style="color-scheme:dark" onchange="setComp(this.value)"></div></div>`;
+  if (!ph) {
+    h += `<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px">Set a comp date to activate the phase planner. Until then: rotational primers are your alactic-power dose.</div>`;
+  } else {
+    h += `<div class="esdphase">${ph.name} · ${ph.wksOut} WK OUT</div><div class="esdrx">${esdRxCopy(ph.name)}</div>`;
+    if (ph.wksOut <= 6 && ph.wksOut > 0 && E.weekNum(S) < 8)
+      h += `<div class="esdrx" style="color:var(--breach)">CONFLICT — lactic block overlapping wk${E.weekNum(S)} of the rebuild. Push the comp or accept the rebuild pausing here.</div>`;
+    h += `<div class="esdrules">Interference rules: lactic ≥24h before hard sparring, never stack with lower day · alactic power same-day with sparring fine (before, not after) · log ESD in BJJ tab so it feeds ACWR · strength maintenance in lactic block = 2×/wk, no progression attempts.</div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+window.setComp = async v => { S.comp = v || null; await persist(); render(); };
+function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function spark(series, color) {
+  if (series.length < 2) return "";
+  const min = Math.min(...series), max = Math.max(...series);
+  const span = max - min || 1;
+  const pts = series.map((v, i) => `${(i / (series.length - 1) * 96 + 2).toFixed(1)},${(26 - (v - min) / span * 22).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 100 28" width="100" height="28"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+
+function renderLog() {
+  let h = `<div class="logtools">
+    <button onclick="exportJSON()">EXPORT JSON</button>
+    <button onclick="importJSON()">IMPORT JSON</button>
+    <button onclick="resetAll()">RESET ALL</button></div>`;
+
+  let trendsRows = "";
+  for (const d of Object.keys(SLOTS)) for (const slot of SLOTS[d]) {
+    if (slot.model !== "gate") continue;
+    const ex = E.curEx(S, slot);
+    const s = E.e1rmSeries(S, ex);
+    if (s.length < 2) continue;
+    const delta = s[s.length - 1] - s[0];
+    trendsRows += `<div class="trend"><div class="tn">${ex}<small>e1RM · ${s.length} sessions</small></div>
+      ${spark(s, "#7FB2FF")}
+      <div class="tv">${Math.round(s[s.length - 1])}<small class="${delta >= 0 ? "up" : "dn"}">${delta >= 0 ? "+" : ""}${Math.round(delta)}</small></div></div>`;
+  }
+  const bws = S.sessions.filter(s => s.bw != null).sort((a, b) => a.date.localeCompare(b.date)).map(s => s.bw);
+  if (bws.length >= 2) {
+    const delta = bws[bws.length - 1] - bws[0];
+    trendsRows += `<div class="trend"><div class="tn">Bodyweight<small>${bws.length} readings</small></div>
+      ${spark(bws, "#4ADE9C")}
+      <div class="tv">${bws[bws.length - 1].toFixed(1)}<small class="${delta >= 0 ? "up" : "dn"}">${delta >= 0 ? "+" : ""}${delta.toFixed(1)}</small></div></div>`;
+  } else if (bws.length === 1) {
+    trendsRows += `<div class="trend"><div class="tn">Bodyweight<small>1 reading</small></div><div></div><div class="tv">${bws[0].toFixed(1)}</div></div>`;
+  }
+  const tons = [];
+  for (let j = 5; j >= 0; j--) tons.push(E.tonnageBetween(S, E.daysAgo(7 * j + 6), E.daysAgo(7 * j)));
+  const mx = Math.max(...tons, 1);
+  let bars = `<div class="bars">` + tons.map(t => `<div class="b" style="height:${Math.max(4, t / mx * 100)}%"><span>${t >= 1000 ? (t / 1000).toFixed(1) + "t" : t}</span></div>`).join("") + `</div>`;
+  bars += `<div class="barlbl">` + [5, 4, 3, 2, 1, 0].map(j => `<div>${j === 0 ? "now" : "-" + j + "w"}</div>`).join("") + `</div>`;
+
+  h += `<div class="panel"><h3>TRENDS</h3>${trendsRows || '<div style="font-size:12px;color:var(--muted)">e1RM trends appear once lifts have 2+ logged sessions with load/reps/RPE.</div>'}
+    <div style="margin-top:14px;font-size:10px;color:var(--muted);letter-spacing:.08em">WEEKLY TONNAGE</div>${bars}</div>`;
+
+  if (!S.sessions.length) return h + `<div class="empty">No sessions logged yet.</div>`;
+  const sorted = S.sessions.slice().sort((a, b) => b.date.localeCompare(a.date));
+  for (const s of sorted) {
+    const rows = s.entries.map(e => {
+      const z = "z-" + E.zone(e.rpe);
+      const pm = e.pain != null && e.pain >= 2 ? ` <span class="painmark p${e.pain}">${PAIN_LABELS[e.pain]}</span>` : "";
+      let r = `<div class="erow"><div class="n">${e.ex}${pm}</div><div class="v">${e.load != null ? e.load + "kg" : "—"}</div><div class="v">${e.sets || "—"}${e.amrap ? " A" + e.amrap : ""}</div><div class="r ${z}">${e.rpe != null ? e.rpe : "—"}</div>`;
+      if (e.note) r += `<div class="enote">${e.note}</div>`;
+      return r + `</div>`; }).join("");
+    const fb = s.flag === "fresh" ? "fresh" : (s.flag === "pre" ? "pre" : "bjj");
+    h += `<div class="sess" id="s-${s.id}">
+      <div class="shead" onclick="document.getElementById('s-${s.id}').classList.toggle('open')">
+        <div class="l">${DAY_LABEL[s.day] || s.day}<small>${s.date} · wk${E.weekNum(S, s.date)}${s.mins ? ` · ${s.mins}′@${s.srpe || "?"}` : ""}${s.bw ? ` · ${s.bw}kg` : ""}</small></div>
+        <div class="fbadge ${fb}">${FLAG_LABELS[s.flag] || s.flag}</div>
+      </div>
+      <div class="sbody">${rows}<button class="del" onclick="delSession('${s.id}')">delete session</button></div>
+    </div>`;
+  }
+  return h;
+}
+
+window.setView = v => { view = v; render(); window.scrollTo(0, 0); };
+window.setF = (key, f, val) => {
+  draft.entries[key] = draft.entries[key] || {};
+  if (f === "load") draft.entries[key][f] = val === "" ? null : parseFloat(val);
+  else if (f === "amrap") draft.entries[key][f] = val === "" ? null : parseInt(val);
+  else draft.entries[key][f] = val;
+};
+window.setRPE = (key, v) => { draft.entries[key] = draft.entries[key] || {}; draft.entries[key].rpe = (draft.entries[key].rpe === v) ? null : v; render(); };
+window.setPain = (key, v) => { draft.entries[key] = draft.entries[key] || {}; draft.entries[key].pain = (draft.entries[key].pain === v) ? null : v; render(); };
+window.addCustom = () => { const n = prompt("Exercise name"); if (n && n.trim()) { draft.custom[view].push(n.trim()); render(); } };
+window.saveSession = async () => {
+  const entries = [];
+  for (const [key, d] of Object.entries(draft.entries)) {
+    const i = key.indexOf("|"); const day = key.slice(0, i), ex = key.slice(i + 1);
+    if (day !== view) continue;
+    if (d.load == null && !d.sets && d.rpe == null && d.pain == null && d.amrap == null && !d.note) continue;
+    entries.push({ ex, load: d.load ?? null, sets: d.sets || "", amrap: d.amrap ?? null, rpe: d.rpe ?? null, pain: d.pain ?? null, note: d.note || "" });
+  }
+  if (!entries.length) { toast("Nothing filled in"); return; }
+  S.sessions.push({ id: "s" + Date.now(), date: draft.date, day: view, flag: draft.flag,
+    mins: draft.mins ? +draft.mins : null, srpe: draft.srpe, bw: draft.bw ? +draft.bw : null, entries });
+  E.advanceWaves(S, view, draft.flag);
+  E.clearOverridesFor(S, entries);
+  E.reclassify(S);
+  const ok = await persist();
+  if (ok) {
+    for (const key of Object.keys(draft.entries)) if (key.startsWith(view + "|")) delete draft.entries[key];
+    draft.custom[view] = []; draft.flag = null; draft.mins = ""; draft.srpe = null; draft.bw = "";
+    toast("Session saved"); render();
+  } else S.sessions.pop();
+};
+window.delSession = async id => {
+  if (!confirm("Delete this session?")) return;
+  const bak = S.sessions.slice(); S.sessions = S.sessions.filter(s => s.id !== id);
+  if (!await persist()) S.sessions = bak; render();
+};
+window.resetAll = async () => {
+  if (!confirm("Wipe everything?")) return;
+  const bak = JSON.stringify(S);
+  S = E.newState();
+  if (!await persist()) S = JSON.parse(bak); render();
+};
+window.exportJSON = () => {
+  const blob = JSON.stringify(S, null, 2);
+  if (navigator.clipboard) { navigator.clipboard.writeText(blob).then(() => toast("Full state copied")); }
+  else prompt("Copy:", blob);
+};
+window.importJSON = async () => {
+  const raw = prompt("Paste exported JSON (v1 array or full state):");
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) S.sessions = parsed;
+    else S = Object.assign(E.newState(), parsed);
+    E.reclassify(S);
+    await persist(); toast("Imported"); render();
+  } catch (e) { toast("Invalid JSON"); }
+};
+function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2200); }
+
+(async () => { await boot(); render(); })();
+</script>
+</body>
+</html>
