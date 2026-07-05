@@ -22,6 +22,9 @@ const lmpSlot = E.SLOTS.push.find(s => s.id === "pu-lmp");      // ladder: ohp
 const squatSlot = E.SLOTS.lower.find(s => s.id === "lo-squat");  // ladder: squat
 const buSlot = E.SLOTS.push.find(s => s.id === "pu-bu");        // regressTo
 const latSlot = E.SLOTS.push.find(s => s.id === "pu-lat");      // dbl 12-15
+const primerSlot = E.SLOTS.push.find(s => s.id === "pu-prime");  // model: primer, no inc
+const carrySlot = E.SLOTS.lower.find(s => s.id === "lo-carry");  // model: iso
+const pullupSlot = E.SLOTS.pull.find(s => s.id === "pl-pullup"); // gate, often bodyweight
 
 /* ---------- utils ---------- */
 describe("parseSets", () => {
@@ -332,4 +335,409 @@ describe("ESD phase planner", () => {
     expect(E.esdPhase(withComp(2), TODAY).name).toBe("TAPER");
   });
   it("null without comp date", () => expect(E.esdPhase(E.newState(), TODAY)).toBeNull());
+  it("comp week and comp passed", () => {
+    const S = E.newState();
+    S.comp = TODAY;
+    expect(E.esdPhase(S, TODAY).name).toBe("COMP WEEK");
+    S.comp = E.daysAgo(8, TODAY);
+    expect(E.esdPhase(S, TODAY).name).toBe("COMP PASSED");
+  });
+});
+
+/* ---------- utils: zone / todayISO ---------- */
+describe("zone", () => {
+  it("maps RPE to zones with null-safe default", () => {
+    expect(E.zone(null)).toBe("n");
+    expect(E.zone("")).toBe("n");
+    expect(E.zone(7)).toBe("c");
+    expect(E.zone(8)).toBe("h");
+    expect(E.zone(8.5)).toBe("b");
+  });
+});
+
+describe("todayISO", () => {
+  it("returns an ISO date string", () => {
+    expect(E.todayISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+/* ---------- bestE1RM edge cases ---------- */
+describe("bestE1RM edges", () => {
+  it("null when sets unparseable and no AMRAP", () => {
+    expect(E.bestE1RM(entry({ ex: "x", load: 100, sets: "heavy triples" }))).toBeNull();
+  });
+  it("null when sets parse but RPE missing", () => {
+    expect(E.bestE1RM(entry({ ex: "x", load: 100, sets: "4x4" }))).toBeNull();
+  });
+});
+
+/* ---------- historyFor entry filtering ---------- */
+describe("historyFor entry filtering", () => {
+  it("includes pain-only entries (no load, no RPE)", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", pain: 3 })] })];
+    const h = E.historyFor(S, "Bench press", 3);
+    expect(h.length).toBe(1);
+    expect(h[0].e.pain).toBe(3);
+  });
+  it("includes RPE-only entries (bodyweight movement)", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", day: "lower", entries: [entry({ ex: "Nordic curl", sets: "3x8", rpe: 8 })] })];
+    expect(E.historyFor(S, "Nordic curl", 3).length).toBe(1);
+  });
+  it("skips note-only entries, falls through to older session", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-07-03", entries: [entry({ ex: "Bench press", note: "skipped — no rack" })] })
+    ];
+    const h = E.historyFor(S, "Bench press", 3);
+    expect(h.length).toBe(1);
+    expect(h[0].date).toBe("2026-07-01");
+  });
+});
+
+/* ---------- firstDate / weekNum ---------- */
+describe("firstDate / weekNum", () => {
+  it("firstDate falls back to today on empty state", () => {
+    expect(E.firstDate(E.newState(), TODAY)).toBe(TODAY);
+  });
+  it("weekNum defaults d to today when null", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: E.daysAgo(10, TODAY) })];
+    expect(E.weekNum(S, null, TODAY)).toBe(2);
+  });
+});
+
+/* ---------- pain edges ---------- */
+describe("pain edges", () => {
+  it("no history → null", () => {
+    expect(E.painState(E.newState(), buSlot)).toBeNull();
+  });
+  it("TIGHT now but previous pain unlogged → no action", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-28", entries: [entry({ ex: "Bottoms-up KB press", load: 8, sets: "3x8", rpe: 7 })] }),
+      sess({ date: "2026-07-04", entries: [entry({ ex: "Bottoms-up KB press", load: 8, sets: "3x8", rpe: 7, pain: 2 })] })
+    ];
+    expect(E.painState(S, buSlot)).toBeNull();
+  });
+});
+
+/* ---------- ladder edges ---------- */
+describe("ladder edges", () => {
+  it("non-ladder slot → null", () => {
+    expect(E.ladderStatus(E.newState(), benchSlot, TODAY)).toBeNull();
+  });
+  it("off-ladder substitution → null", () => {
+    const S = E.newState();
+    S.subs["lo-squat"] = "Belt squat";
+    expect(E.ladderStatus(S, squatSlot, TODAY)).toBeNull();
+  });
+  it("top rung → null", () => {
+    const S = E.newState();
+    S.subs["lo-squat"] = "Zercher squat";
+    expect(E.ladderStatus(S, squatSlot, TODAY)).toBeNull();
+  });
+  it("advanceLadder refuses when ineligible; sub and wave untouched", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: TODAY, day: "lower", entries: [entry({ ex: "Box squat", load: 70, sets: "6x4", rpe: 7 })] })];
+    S.waves["lo-squat"] = { active: true, tm: 100, wk: 2 };
+    expect(E.advanceLadder(S, squatSlot, TODAY)).toBeNull(); // week 1 < minWeek 5
+    expect(S.subs["lo-squat"]).toBeUndefined();
+    expect(S.waves["lo-squat"]).toBeDefined();
+  });
+});
+
+/* ---------- stall edges ---------- */
+describe("stall edges", () => {
+  it("no stall with fewer than 3 eligible sessions", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-28", entries: [entry({ ex: "Bench press", load: 90, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-07-04", entries: [entry({ ex: "Bench press", load: 90, sets: "4x4", rpe: 8 })] })
+    ];
+    expect(E.stallDetected(S, benchSlot)).toBe(false);
+  });
+  it("no stall when an RPE is missing", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-21", entries: [entry({ ex: "Bench press", load: 90, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-06-28", entries: [entry({ ex: "Bench press", load: 90, sets: "4x4" })] }),
+      sess({ date: "2026-07-04", entries: [entry({ ex: "Bench press", load: 90, sets: "4x4", rpe: 8 })] })
+    ];
+    expect(E.stallDetected(S, benchSlot)).toBe(false);
+  });
+});
+
+/* ---------- wave edges ---------- */
+describe("wave edges", () => {
+  it("waveRx falls back to deload rx on out-of-range weeks", () => {
+    expect(E.waveRx({ wk: 5 })).toEqual({ sets: "3x3 deload", pct: 0.65 });
+    expect(E.waveRx({ wk: 0 })).toEqual({ sets: "3x3 deload", pct: 0.65 });
+    expect(E.waveRx({})).toEqual({ sets: "3x3 deload", pct: 0.65 });
+  });
+  it("startWave null without history", () => {
+    expect(E.startWave(E.newState(), benchSlot)).toBeNull();
+  });
+  it("startWave falls back to load×1.1 when e1RM unavailable", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", load: 100, sets: "heavy work" })] })];
+    // no AMRAP, unparseable sets → est = 100×1.1 = 110 → tm = rnd(99, 2.5) = 100
+    expect(E.startWave(S, benchSlot).tm).toBe(100);
+  });
+  it("startWave falls back to 60kg base when load is null", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", rpe: 8 })] })];
+    // est = 60×1.1 = 66 → tm = rnd(59.4, 2.5) = 60
+    expect(E.startWave(S, benchSlot).tm).toBe(60);
+  });
+  it("advanceWaves ignores inactive wave state", () => {
+    const S = E.newState();
+    S.waves["pu-bench"] = { active: false, tm: 100, wk: 2 };
+    E.advanceWaves(S, "push", "fresh", TODAY);
+    expect(S.waves["pu-bench"].wk).toBe(2);
+  });
+  it("advanceWaves TM bump defaults inc to 2.5 when slot lacks inc", () => {
+    const S = E.newState();
+    S.waves["pu-prime"] = { active: true, tm: 50, wk: 4 };
+    E.advanceWaves(S, "push", "fresh", TODAY);
+    expect(S.waves["pu-prime"].wk).toBe(1);
+    expect(S.waves["pu-prime"].tm).toBe(55); // +2×2.5 default
+  });
+});
+
+/* ---------- recommend: wave / deload / model variants ---------- */
+describe("recommend variants", () => {
+  it("active wave rx from TM percentage", () => {
+    const S = E.newState();
+    S.waves["pu-bench"] = { active: true, tm: 100, wk: 1 };
+    const r = E.recommend(S, benchSlot, TODAY);
+    expect(r.cls).toBe("wave");
+    expect(r.txt).toContain("5x5 @ 80kg");
+  });
+  it("wave week 4 renders as DL", () => {
+    const S = E.newState();
+    S.waves["pu-bench"] = { active: true, tm: 100, wk: 4 };
+    expect(E.recommend(S, benchSlot, TODAY).txt).toContain("WKDL");
+  });
+  it("inactive wave falls through to gate logic", () => {
+    const S = E.newState();
+    S.waves["pu-bench"] = { active: false, tm: 100, wk: 1 };
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", rpe: 7 })] })];
+    expect(E.recommend(S, benchSlot, TODAY).cls).toBe("cleared");
+  });
+  it("override without reason labels generic override", () => {
+    const S = E.newState();
+    S.overrides["Bench press"] = { load: 70 };
+    expect(E.recommend(S, benchSlot, TODAY).txt).toContain("override");
+  });
+  it("deload with no history or no load → generic light prescription", () => {
+    const S1 = E.newState();
+    E.startDeload(S1, TODAY);
+    expect(E.recommend(S1, benchSlot, TODAY).txt).toContain("DELOAD — light");
+    const S2 = E.newState();
+    S2.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", pain: 1 })] })];
+    E.startDeload(S2, TODAY);
+    expect(E.recommend(S2, benchSlot, TODAY).txt).toContain("DELOAD — light");
+  });
+  it("deload skips primer slots", () => {
+    const S = E.newState();
+    E.startDeload(S, TODAY);
+    expect(E.recommend(S, primerSlot, TODAY).cls).toBe("none");
+  });
+  it("primer with history → speed work, load static", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Landmine rotational punch", load: 20, sets: "3x3", rpe: 6 })] })];
+    expect(E.recommend(S, primerSlot, TODAY).txt).toContain("SPEED WORK");
+  });
+  it("iso shows last load, or dash when bodyweight", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", day: "lower", entries: [entry({ ex: "Suitcase carry", load: 24, rpe: 6 })] })];
+    expect(E.recommend(S, carrySlot, TODAY).txt).toContain("24kg");
+    S.sessions = [sess({ date: "2026-07-02", day: "lower", entries: [entry({ ex: "Suitcase carry", rpe: 6 })] })];
+    expect(E.recommend(S, carrySlot, TODAY).txt).toContain("—");
+  });
+  it("load logged without RPE → prompt", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", pain: 0 })] })];
+    expect(E.recommend(S, benchSlot, TODAY).txt).toBe("NO RPE LOGGED");
+  });
+  it("gate cleared at bodyweight shows +inc", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", day: "pull", entries: [entry({ ex: "Weighted pull-up (neutral)", sets: "5x5", rpe: 6.5 })] })];
+    const r = E.recommend(S, pullupSlot, TODAY);
+    expect(r.cls).toBe("cleared");
+    expect(r.txt).toContain("+2.5");
+  });
+  it("double progression RPE >8.5 → breach", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: "2026-07-01", entries: [entry({ ex: "Cable lateral raise (behind-back)", load: 10, sets: "5x12", rpe: 9 })] })];
+    expect(E.recommend(S, latSlot, TODAY).cls).toBe("breach");
+  });
+});
+
+/* ---------- load model edges ---------- */
+describe("load model edges", () => {
+  it("legacy gym sessions imputed 60min @ sRPE6", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: TODAY, mins: null, srpe: null })];
+    expect(E.loadByDay(S)[TODAY]).toBe(360);
+  });
+  it("gym and BJJ on the same date sum", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: TODAY, mins: 45, srpe: 7 })];
+    S.bjj = [{ id: "b1", date: TODAY, mins: 60, srpe: 8, note: "" }];
+    expect(E.loadByDay(S)[TODAY]).toBe(45 * 7 + 60 * 8);
+  });
+});
+
+/* ---------- tonnage edges ---------- */
+describe("tonnage edges", () => {
+  it("unparseable sets and bodyweight entries contribute zero", () => {
+    const S = E.newState();
+    S.sessions = [sess({
+      date: TODAY, entries: [
+        entry({ ex: "a", load: 100, sets: "amrap ladder" }), // unparseable → 0
+        entry({ ex: "b", sets: "3x8" }),                     // load null → 0
+        entry({ ex: "c", load: 50, sets: "2x10" })           // 1000
+      ]
+    })];
+    expect(E.weekTonnage(S, TODAY)).toBe(1000);
+  });
+  it("sessions outside the window are excluded", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-01", entries: [entry({ ex: "a", load: 100, sets: "5x5" })] }),
+      sess({ date: "2026-07-04", entries: [entry({ ex: "a", load: 100, sets: "2x2" })] }),
+      sess({ date: "2026-07-20", entries: [entry({ ex: "a", load: 100, sets: "5x5" })] })
+    ];
+    expect(E.tonnageBetween(S, "2026-07-01", "2026-07-10")).toBe(400);
+  });
+});
+
+/* ---------- deload signal edges ---------- */
+describe("deload signal edges", () => {
+  it("pain older than 7d or below 2 doesn't count", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: E.daysAgo(10, TODAY), entries: [entry({ ex: "x", load: 10, sets: "3x8", rpe: 7, pain: 3 })] }),
+      sess({ date: E.daysAgo(1, TODAY), entries: [entry({ ex: "x", load: 10, sets: "3x8", rpe: 7, pain: 1 })] })
+    ];
+    expect(E.recentPain(S, TODAY)).toBe(false);
+  });
+  it("empty state → no signal, no reasons", () => {
+    const sig = E.deloadSignal(E.newState(), TODAY);
+    expect(sig.fire).toBe(false);
+    expect(sig.reasons).toEqual([]);
+  });
+  it("fires on ACWR spike + recent pain", () => {
+    const S = E.newState();
+    for (let i = 7; i < 28; i++) S.bjj.push({ id: "b" + i, date: E.daysAgo(i, TODAY), mins: 30, srpe: 4, note: "" });
+    for (let i = 0; i < 7; i++) S.bjj.push({ id: "a" + i, date: E.daysAgo(i, TODAY), mins: 90, srpe: 9, note: "" });
+    S.sessions = [sess({ date: E.daysAgo(1, TODAY), entries: [entry({ ex: "x", load: 10, sets: "3x8", rpe: 7, pain: 2 })] })];
+    const sig = E.deloadSignal(S, TODAY);
+    expect(sig.fire).toBe(true);
+    expect(sig.reasons.some(r => r.includes("ACWR"))).toBe(true);
+  });
+  it("isDeload false once window expires", () => {
+    const S = E.newState();
+    S.deload = { until: E.daysAgo(1, TODAY) };
+    expect(E.isDeload(S, TODAY)).toBe(false);
+  });
+  it("startDeload sets a 7-day window", () => {
+    const S = E.newState();
+    expect(E.startDeload(S, TODAY).until).toBe("2026-07-12");
+    expect(E.isDeload(S, TODAY)).toBe(true);
+  });
+});
+
+/* ---------- proposal validation matrix ---------- */
+describe("proposal validation matrix", () => {
+  it("slotById null on unknown id", () => expect(E.slotById("nope")).toBeNull());
+  it("set_sub: unknown slot", () => {
+    expect(E.validateProposal(E.newState(), { type: "set_sub", slot_id: "nope", exercise: "Floor press" })).toBe("unknown slot");
+  });
+  it("start_wave: unknown slot / missing tm / valid", () => {
+    const S = E.newState();
+    expect(E.validateProposal(S, { type: "start_wave", slot_id: "nope", tm: 100 })).toBe("unknown slot");
+    expect(E.validateProposal(S, { type: "start_wave", slot_id: "pu-bench" })).toBe("missing tm");
+    expect(E.validateProposal(S, { type: "start_wave", slot_id: "pu-bench", tm: 100 })).toBeNull();
+  });
+  it("exit_wave: unknown slot / valid", () => {
+    expect(E.validateProposal(E.newState(), { type: "exit_wave", slot_id: "nope" })).toBe("unknown slot");
+    expect(E.validateProposal(E.newState(), { type: "exit_wave", slot_id: "pu-bench" })).toBeNull();
+  });
+  it("advance_ladder: non-ladder or unknown slot / top rung / valid", () => {
+    const S = E.newState();
+    expect(E.validateProposal(S, { type: "advance_ladder", slot_id: "pu-bench" })).toBe("not a ladder slot");
+    expect(E.validateProposal(S, { type: "advance_ladder", slot_id: "nope" })).toBe("not a ladder slot");
+    expect(E.validateProposal(S, { type: "advance_ladder", slot_id: "pu-lmp" })).toBeNull();
+    S.subs["lo-squat"] = "Zercher squat";
+    expect(E.validateProposal(S, { type: "advance_ladder", slot_id: "lo-squat" })).toBe("no next rung");
+  });
+  it("start_deload always valid; override_load needs exercise + numeric load", () => {
+    expect(E.validateProposal(E.newState(), { type: "start_deload" })).toBeNull();
+    expect(E.validateProposal(E.newState(), { type: "override_load", load: 70 })).toBe("missing exercise/load");
+    expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bench press", load: "70" })).toBe("missing exercise/load");
+    expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bench press", load: 70 })).toBeNull();
+  });
+});
+
+/* ---------- applyProposal per type ---------- */
+describe("applyProposal per type", () => {
+  it("invalid proposal → error, state untouched", () => {
+    const S = E.newState();
+    expect(E.applyProposal(S, { type: "set_sub", slot_id: "nope", exercise: "Floor press" }, TODAY)).toBe("unknown slot");
+    expect(S.subs).toEqual({});
+  });
+  it("start_wave rounds TM to 2.5", () => {
+    const S = E.newState();
+    expect(E.applyProposal(S, { type: "start_wave", slot_id: "pu-bench", tm: 101.3 }, TODAY)).toBeNull();
+    expect(S.waves["pu-bench"]).toEqual({ active: true, tm: 102.5, wk: 1 });
+  });
+  it("exit_wave removes wave state", () => {
+    const S = E.newState();
+    S.waves["pu-bench"] = { active: true, tm: 100, wk: 2 };
+    expect(E.applyProposal(S, { type: "exit_wave", slot_id: "pu-bench" }, TODAY)).toBeNull();
+    expect(S.waves["pu-bench"]).toBeUndefined();
+  });
+  it("advance_ladder subs next rung and kills wave", () => {
+    const S = E.newState();
+    S.waves["lo-squat"] = { active: true, tm: 100, wk: 3 };
+    expect(E.applyProposal(S, { type: "advance_ladder", slot_id: "lo-squat" }, TODAY)).toBeNull();
+    expect(S.subs["lo-squat"]).toBe("Zercher to box");
+    expect(S.waves["lo-squat"]).toBeUndefined();
+  });
+  it("start_deload opens 7-day window from today", () => {
+    const S = E.newState();
+    expect(E.applyProposal(S, { type: "start_deload" }, TODAY)).toBeNull();
+    expect(S.deload.until).toBe("2026-07-12");
+  });
+  it("override_load stores load with defaulted reason", () => {
+    const S = E.newState();
+    E.applyProposal(S, { type: "override_load", exercise: "Bench press", load: 77.5 }, TODAY);
+    expect(S.overrides["Bench press"]).toEqual({ load: 77.5, reason: "" });
+    E.applyProposal(S, { type: "override_load", exercise: "RDL", load: 100, reason: "form reset" }, TODAY);
+    expect(S.overrides["RDL"].reason).toBe("form reset");
+  });
+});
+
+/* ---------- e1rmSeries ---------- */
+describe("e1rmSeries", () => {
+  it("ascending order, skips post-BJJ and null-e1RM entries, caps at maxN", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-01", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-06-08", flag: "bjj", entries: [entry({ ex: "Bench press", load: 100, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-06-15", entries: [entry({ ex: "Bench press", load: 85, pain: 1 })] }), // no e1RM
+      sess({ date: "2026-06-22", entries: [entry({ ex: "Bench press", load: 85, sets: "4x4", rpe: 7.5 })] }),
+      sess({ date: "2026-06-29", entries: [entry({ ex: "Bench press", load: 87.5, sets: "4x4", rpe: 8 })] })
+    ];
+    const series = E.e1rmSeries(S, "Bench press");
+    expect(series.length).toBe(3);
+    expect(series[0]).toBeCloseTo(E.e1rm(80, 4, 7));
+    expect(series[2]).toBeCloseTo(E.e1rm(87.5, 4, 8));
+    expect(E.e1rmSeries(S, "Bench press", 2).length).toBe(2);
+  });
 });
