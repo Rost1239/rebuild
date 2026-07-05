@@ -6,6 +6,7 @@
  *    until a describe block exceeds ~200 lines.
  */
 import { describe, it, expect } from "vitest";
+import fc from "fast-check";
 import * as E from "../src/engine.js";
 
 const TODAY = "2026-07-05";
@@ -806,6 +807,137 @@ describe("invariant audit: banned movements (invariant 8)", () => {
     expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Dips", load: 40 })).toBeTruthy();
     expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bulgarian split squat", load: 30 })).toBeTruthy();
     expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bench press", load: 80 })).toBeNull();
+  });
+});
+
+/* ---------- coach gate: ladder escalation requires symptom-clean ----------
+ * Week-threshold bypass is allowed (calendar is discretionary); the 14-day
+ * symptom gate is not (symptoms are not). Applies to advance_ladder and to
+ * set_sub moves UP the same ladder. */
+describe("proposal ladder escalation gate", () => {
+  function painfulSquat(painDaysAgo) {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: E.daysAgo(40, TODAY), day: "lower", entries: [entry({ ex: "Box squat", load: 60, sets: "6x4", rpe: 7 })] }),
+      sess({ date: E.daysAgo(painDaysAgo, TODAY), day: "lower", entries: [entry({ ex: "Box squat", load: 70, sets: "6x4", rpe: 7, pain: 2 })] })
+    ];
+    return S;
+  }
+  it("advance_ladder rejected when current exercise had pain ≥2 within 14d", () => {
+    expect(E.validateProposal(painfulSquat(5), { type: "advance_ladder", slot_id: "lo-squat" }, TODAY)).toBe("not 14d symptom-clean");
+  });
+  it("advance_ladder allowed again once pain ages past 14d", () => {
+    expect(E.validateProposal(painfulSquat(20), { type: "advance_ladder", slot_id: "lo-squat" }, TODAY)).toBeNull();
+  });
+  it("week threshold stays coach-bypassable (clean week-1 advance applies)", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: E.daysAgo(2, TODAY), day: "lower", entries: [entry({ ex: "Box squat", load: 60, sets: "6x4", rpe: 7 })] })];
+    expect(E.ladderStatus(S, squatSlot, TODAY).eligible).toBe(false); // engine's own gate blocks on week
+    expect(E.applyProposal(S, { type: "advance_ladder", slot_id: "lo-squat" }, TODAY)).toBeNull();
+    expect(S.subs["lo-squat"]).toBe("Zercher to box");
+  });
+  it("pain logged post-BJJ blocks escalation too", () => {
+    const S = E.newState();
+    S.sessions = [sess({ date: E.daysAgo(3, TODAY), day: "lower", flag: "bjj", entries: [entry({ ex: "Box squat", pain: 2 })] })];
+    expect(E.validateProposal(S, { type: "advance_ladder", slot_id: "lo-squat" }, TODAY)).toBe("not 14d symptom-clean");
+  });
+  it("set_sub to a higher rung rejected under pain; clean is fine", () => {
+    expect(E.validateProposal(painfulSquat(5), { type: "set_sub", slot_id: "lo-squat", exercise: "Zercher to box" }, TODAY)).toBe("not 14d symptom-clean");
+    expect(E.validateProposal(painfulSquat(20), { type: "set_sub", slot_id: "lo-squat", exercise: "Zercher to box" }, TODAY)).toBeNull();
+  });
+  it("set_sub down-rung stays allowed under pain (that IS the regression play)", () => {
+    const S = E.newState();
+    S.subs["lo-squat"] = "Zercher to box";
+    S.sessions = [sess({ date: E.daysAgo(3, TODAY), day: "lower", entries: [entry({ ex: "Zercher to box", load: 60, sets: "6x4", rpe: 8, pain: 2 })] })];
+    expect(E.validateProposal(S, { type: "set_sub", slot_id: "lo-squat", exercise: "Box squat" }, TODAY)).toBeNull();
+  });
+  it("off-ladder moves are not escalations (no rung ordering exists)", () => {
+    // painful Box squat → Belt squat: lateral escape to zero spinal load, allowed
+    expect(E.validateProposal(painfulSquat(5), { type: "set_sub", slot_id: "lo-squat", exercise: "Belt squat" }, TODAY)).toBeNull();
+    // from an off-ladder sub, rung targets have no "higher" relation — coach + human confirm decide
+    const S = E.newState();
+    S.subs["lo-squat"] = "Belt squat";
+    S.sessions = [sess({ date: E.daysAgo(3, TODAY), day: "lower", entries: [entry({ ex: "Belt squat", load: 100, sets: "4x8", rpe: 7, pain: 2 })] })];
+    expect(E.validateProposal(S, { type: "set_sub", slot_id: "lo-squat", exercise: "Zercher squat" }, TODAY)).toBeNull();
+  });
+});
+
+/* ---------- property-based tests (backlog item 2) ----------
+ * Sets strings and entry fields arrive from stored/imported JSON — the parse
+ * layer must never throw, whatever lands in it. e1RM must be monotonic in
+ * reps and load or progression comparisons are meaningless. */
+describe("property: parseSets", () => {
+  it("never throws on arbitrary junk; result is null or a sane shape", () => {
+    fc.assert(fc.property(
+      fc.oneof(fc.string(), fc.constantFrom(null, undefined), fc.anything()),
+      s => {
+        const r = E.parseSets(s);
+        return r === null || (typeof r.n === "number" && typeof r.reps === "number" && r.n >= 0 && r.reps >= 0);
+      }
+    ));
+  });
+  it("round-trips generated NxM in any tolerated spelling", () => {
+    fc.assert(fc.property(
+      fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 }),
+      fc.constantFrom("x", "X", "×"),
+      fc.constantFrom("", " ", "  "),
+      fc.constantFrom("", "/side", " /side · primer"),
+      (n, reps, sep, sp, suffix) => {
+        const r = E.parseSets(`${n}${sp}${sep}${sp}${reps}${suffix}`);
+        return r !== null && r.n === n && r.reps === reps;
+      }
+    ));
+  });
+});
+
+describe("property: bestE1RM", () => {
+  const junkEntry = fc.record({
+    ex: fc.string(),
+    load: fc.oneof(fc.constant(null), fc.double({ min: -1e6, max: 1e6, noNaN: true }), fc.anything()),
+    sets: fc.oneof(fc.string(), fc.anything()),
+    amrap: fc.oneof(fc.constant(null), fc.integer({ min: -100, max: 100 }), fc.anything()),
+    rpe: fc.oneof(fc.constant(null), fc.constantFrom(...E.RPE_VALUES), fc.anything()),
+    pain: fc.oneof(fc.constant(null), fc.integer({ min: 0, max: 3 }))
+  });
+  it("never throws on garbage entries; returns null or a number", () => {
+    fc.assert(fc.property(junkEntry, e => {
+      const v = E.bestE1RM(e);
+      return v === null || typeof v === "number";
+    }));
+  });
+  it("monotonic in AMRAP reps", () => {
+    fc.assert(fc.property(
+      fc.double({ min: 20, max: 300, noNaN: true }),
+      fc.integer({ min: 1, max: 20 }),
+      fc.integer({ min: 1, max: 10 }),
+      fc.constantFrom(...E.RPE_VALUES),
+      (load, reps, bump, rpe) => {
+        const lo = E.bestE1RM({ ex: "x", load, sets: "", amrap: reps, rpe, pain: null });
+        const hi = E.bestE1RM({ ex: "x", load, sets: "", amrap: reps + bump, rpe, pain: null });
+        return hi > lo;
+      }
+    ));
+  });
+});
+
+describe("property: e1rm monotonicity", () => {
+  it("strictly increasing in load", () => {
+    fc.assert(fc.property(
+      fc.double({ min: 1, max: 500, noNaN: true }),
+      fc.double({ min: 0.5, max: 100, noNaN: true }),
+      fc.integer({ min: 0, max: 30 }),
+      fc.constantFrom(...E.RPE_VALUES),
+      (load, delta, reps, rpe) => E.e1rm(load + delta, reps, rpe) > E.e1rm(load, reps, rpe)
+    ));
+  });
+  it("strictly increasing in reps", () => {
+    fc.assert(fc.property(
+      fc.double({ min: 1, max: 500, noNaN: true }),
+      fc.integer({ min: 0, max: 30 }),
+      fc.integer({ min: 1, max: 15 }),
+      fc.constantFrom(...E.RPE_VALUES),
+      (load, reps, bump, rpe) => E.e1rm(load, reps + bump, rpe) > E.e1rm(load, reps, rpe)
+    ));
   });
 });
 

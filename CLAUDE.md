@@ -49,6 +49,9 @@ any pain ≥2 in last 7d} → 7 days at ~60% load, sets −⅓, RPE ≤6.
 Coach proposals (from LLM review): types set_sub | start_wave | exit_wave |
 advance_ladder | start_deload | override_load. Every proposal is validated against
 the slot table before apply. Overrides are one-session and cleared on log.
+Ladder escalation (advance_ladder, or set_sub UP the same ladder) additionally
+requires 14-day symptom-clean on the current exercise; the week threshold alone
+is coach-bypassable (calendar is discretionary, symptoms are not).
 
 ## Invariants — every one must keep test coverage
 

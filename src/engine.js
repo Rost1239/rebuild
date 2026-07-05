@@ -165,9 +165,10 @@ export function todayISO() { return new Date().toISOString().slice(0, 10); }
 export function zone(r) { if (r == null || r === "") return "n"; return r <= 7 ? "c" : (r <= 8 ? "h" : "b"); }
 export function rnd(x, step) { return Math.round(x / step) * step; }
 
-/** Parse "NxM" from free text; tolerates ×, spaces, trailing "/side". Null if unparseable. */
+/** Parse "NxM" from free text; tolerates ×, spaces, trailing "/side". Null if unparseable.
+ *  Coerces non-string input (imported state JSON may carry anything) — never throws. */
 export function parseSets(s) {
-  const m = (s || "").match(/(\d+)\s*[x×X]\s*(\d+)/);
+  const m = String(s ?? "").match(/(\d+)\s*[x×X]\s*(\d+)/);
   return m ? { n: +m[1], reps: +m[2] } : null;
 }
 
@@ -473,19 +474,30 @@ export function slotById(id) {
   return null;
 }
 
-/** Returns null if valid, else a reason string. */
-export function validateProposal(S, p) {
+/** Returns null if valid, else a reason string.
+ *  Ladder escalation (advance_ladder, or set_sub UP the same ladder) requires
+ *  14-day symptom-clean on the current exercise. The week threshold is NOT
+ *  checked here — calendar is coach-discretionary, symptoms are not. */
+export function validateProposal(S, p, today = todayISO()) {
   if (p.type === "set_sub") {
     const f = slotById(p.slot_id); if (!f) return "unknown slot";
     const ok = (LIB[f.slot.role] || []).some(o => o.n === p.exercise);
-    return ok ? null : "exercise not in slot role";
+    if (!ok) return "exercise not in slot role";
+    if (f.slot.ladder) {
+      const L = LADDERS[f.slot.ladder];
+      const cur = curEx(S, f.slot);
+      const from = L.rungs.indexOf(cur), to = L.rungs.indexOf(p.exercise);
+      if (from >= 0 && to > from && !painCleanFor(S, cur, 14, today)) return "not 14d symptom-clean";
+    }
+    return null;
   }
   if (p.type === "start_wave") { if (!slotById(p.slot_id)) return "unknown slot"; if (typeof p.tm !== "number") return "missing tm"; return null; }
   if (p.type === "exit_wave") { return slotById(p.slot_id) ? null : "unknown slot"; }
   if (p.type === "advance_ladder") {
     const f = slotById(p.slot_id); if (!f || !f.slot.ladder) return "not a ladder slot";
-    const L = LADDERS[f.slot.ladder]; const r = L.rungs.indexOf(curEx(S, f.slot));
-    return (r >= 0 && r < L.rungs.length - 1) ? null : "no next rung";
+    const L = LADDERS[f.slot.ladder]; const cur = curEx(S, f.slot); const r = L.rungs.indexOf(cur);
+    if (!(r >= 0 && r < L.rungs.length - 1)) return "no next rung";
+    return painCleanFor(S, cur, 14, today) ? null : "not 14d symptom-clean";
   }
   if (p.type === "start_deload") return null;
   if (p.type === "override_load") {
@@ -498,7 +510,7 @@ export function validateProposal(S, p) {
 
 /** Apply a validated proposal to state. Returns error string or null on success. */
 export function applyProposal(S, p, today = todayISO()) {
-  const err = validateProposal(S, p);
+  const err = validateProposal(S, p, today);
   if (err) return err;
   if (p.type === "set_sub") { S.subs[p.slot_id] = p.exercise; delete S.waves[p.slot_id]; }
   else if (p.type === "start_wave") S.waves[p.slot_id] = { active: true, tm: rnd(p.tm, 2.5), wk: 1 };
