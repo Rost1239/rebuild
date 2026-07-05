@@ -723,6 +723,92 @@ describe("applyProposal per type", () => {
   });
 });
 
+/* ---------- invariant audit (backlog item 3) ----------
+ * Pain is a SAFETY rule: it must see every session, including post-BJJ.
+ * The eligibility filter (invariant 1) applies to progression only. */
+describe("invariant audit: pain rules see post-BJJ sessions", () => {
+  it("PAIN(3) logged post-BJJ still hard-stops the next session", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-07-01", flag: "fresh", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", rpe: 7, pain: 0 })] }),
+      sess({ date: "2026-07-03", flag: "bjj", entries: [entry({ ex: "Bench press", pain: 3 })] })
+    ];
+    const ps = E.painState(S, benchSlot);
+    expect(ps).not.toBeNull();
+    expect(ps.level).toBe("stop");
+  });
+  it("TIGHT twice running counts across a post-BJJ session", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-06-28", flag: "bjj", entries: [entry({ ex: "Bottoms-up KB press", rpe: 7, pain: 2 })] }),
+      sess({ date: "2026-07-04", flag: "fresh", entries: [entry({ ex: "Bottoms-up KB press", load: 8, sets: "3x8", rpe: 7, pain: 2 })] })
+    ];
+    const ps = E.painState(S, buSlot);
+    expect(ps).not.toBeNull();
+    expect(ps.level).toBe("regress");
+  });
+  it("clean eligible session after post-BJJ pain clears the stop", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-07-01", flag: "bjj", entries: [entry({ ex: "Bench press", pain: 3 })] }),
+      sess({ date: "2026-07-03", flag: "fresh", entries: [entry({ ex: "Bench press", load: 70, sets: "4x4", rpe: 6, pain: 0 })] })
+    ];
+    expect(E.painState(S, benchSlot)).toBeNull();
+  });
+  it("progression history still excludes post-BJJ (invariant 1 unchanged)", () => {
+    const S = E.newState();
+    S.sessions = [
+      sess({ date: "2026-07-01", flag: "fresh", entries: [entry({ ex: "Bench press", load: 80, sets: "4x4", rpe: 7 })] }),
+      sess({ date: "2026-07-03", flag: "bjj", entries: [entry({ ex: "Bench press", load: 60, sets: "3x8", rpe: 9 })] })
+    ];
+    expect(E.historyFor(S, "Bench press", 5).length).toBe(1);
+    expect(E.recommend(S, benchSlot, TODAY).cls).toBe("cleared");
+  });
+});
+
+describe("invariant audit: slot table ↔ LIB consistency", () => {
+  it("every slot default is in its role's library list", () => {
+    for (const day of Object.keys(E.SLOTS)) for (const slot of E.SLOTS[day]) {
+      const names = (E.LIB[slot.role] || []).map(o => o.n);
+      expect(names, `slot ${slot.id} def "${slot.def}" missing from LIB.${slot.role}`).toContain(slot.def);
+    }
+  });
+  it("every ladder rung and regressTo target is in the library", () => {
+    for (const key of Object.keys(E.LADDERS)) {
+      const L = E.LADDERS[key];
+      const { slot } = E.slotById(L.slot);
+      const names = E.LIB[slot.role].map(o => o.n);
+      for (const rung of L.rungs) expect(names, `ladder ${key} rung "${rung}"`).toContain(rung);
+    }
+    for (const day of Object.keys(E.SLOTS)) for (const slot of E.SLOTS[day]) {
+      if (slot.regressTo)
+        expect(E.LIB[slot.role].map(o => o.n), `slot ${slot.id} regressTo "${slot.regressTo}"`).toContain(slot.regressTo);
+    }
+  });
+});
+
+describe("invariant audit: banned movements (invariant 8)", () => {
+  // L glenohumeral irritation + old ACJ sprain — see CLAUDE.md injury constraints.
+  const BANNED = [
+    /\bdips?\b/i, /wide[- ]?grip/i, /behind[- ]?(the[- ])?neck/i, /upright row/i,
+    /bulgarian/i, /\bcalf\b/i, /front (raise|delt)/i, /deep[- ]?stretch/i
+  ];
+  it("never appear in LIB", () => {
+    for (const role of Object.keys(E.LIB)) for (const o of E.LIB[role]) {
+      for (const rx of BANNED) expect(o.n, `LIB.${role} "${o.n}" matches banned ${rx}`).not.toMatch(rx);
+    }
+  });
+  it("never pass set_sub validation", () => {
+    expect(E.validateProposal(E.newState(), { type: "set_sub", slot_id: "pu-bench", exercise: "Dips" })).toBeTruthy();
+    expect(E.validateProposal(E.newState(), { type: "set_sub", slot_id: "pu-bench", exercise: "Wide-grip bench" })).toBeTruthy();
+  });
+  it("never pass override_load validation", () => {
+    expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Dips", load: 40 })).toBeTruthy();
+    expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bulgarian split squat", load: 30 })).toBeTruthy();
+    expect(E.validateProposal(E.newState(), { type: "override_load", exercise: "Bench press", load: 80 })).toBeNull();
+  });
+});
+
 /* ---------- e1rmSeries ---------- */
 describe("e1rmSeries", () => {
   it("ascending order, skips post-BJJ and null-e1RM entries, caps at maxN", () => {

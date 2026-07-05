@@ -21,6 +21,8 @@
  *  - POST-BJJ ('bjj') sessions NEVER count toward progression.
  *  - PRE-BJJ ('pre') sessions count fully.
  *  - Pain rules outrank ladder prompts and stall detection.
+ *  - Pain rules read ALL sessions incl. post-BJJ (fullHistoryFor) — the
+ *    eligibility filter is progression-only, never safety.
  *  - Substituting an exercise kills any wave state on that slot.
  *  - Coach load overrides apply to exactly one logged session of that exercise.
  *  - reclassify() only flips 'fresh' → 'pre'; it never touches 'bjj' or manual 'pre'.
@@ -146,7 +148,7 @@ export const SLOTS = {
     { id: "pl-rdl", role: "hinge_rdl", def: "RDL", t: "4×5-6", model: "gate", inc: 5 },
     { id: "pl-rpd", role: "rear_chain_delt", def: "Reverse pec deck", t: "4×12-15", model: "dbl", lo: 12, hi: 15, inc: 2.5 },
     { id: "pl-t3", role: "lower_trap", def: "Trap-3 raise", t: "2×10-12", model: "iso" },
-    { id: "pl-tri", role: "triceps", def: "OH cable extension", t: "3×10-12", model: "dbl", lo: 10, hi: 12, inc: 2.5 },
+    { id: "pl-tri", role: "triceps", def: "OH cable triceps extension", t: "3×10-12", model: "dbl", lo: 10, hi: 12, inc: 2.5 },
     { id: "pl-curl", role: "biceps", def: "Incline DB curl", t: "3×8-12", model: "dbl", lo: 8, hi: 12, inc: 2 },
     { id: "pl-ham", role: "biceps_neutral", def: "Hammer curl", t: "2×10-12", model: "dbl", lo: 10, hi: 12, inc: 2 }
   ]
@@ -198,10 +200,22 @@ export function eligibleSessions(S) {
   return S.sessions.filter(s => s.flag !== "bjj").sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/** Last n eligible entries for an exercise, newest first. */
+/** Last n eligible entries for an exercise, newest first. Progression decisions only. */
 export function historyFor(S, ex, n) {
   const out = [];
   for (const s of eligibleSessions(S)) {
+    const e = s.entries.find(x => x.ex === ex && (x.load != null || x.rpe != null || x.pain != null));
+    if (e) { out.push({ date: s.date, e }); if (out.length >= n) break; }
+  }
+  return out;
+}
+
+/** Last n entries for an exercise across ALL sessions (any flag), newest first.
+ *  Safety rules (pain) use this — the eligibility filter is progression-only. */
+export function fullHistoryFor(S, ex, n) {
+  const out = [];
+  const all = S.sessions.slice().sort((a, b) => b.date.localeCompare(a.date));
+  for (const s of all) {
     const e = s.entries.find(x => x.ex === ex && (x.load != null || x.rpe != null || x.pain != null));
     if (e) { out.push({ date: s.date, e }); if (out.length >= n) break; }
   }
@@ -231,9 +245,10 @@ export function reclassify(S) {
 
 /* ================= PAIN RULES ================= */
 
-/** Pain gate for a slot. PAIN(3) once = hard stop; TIGHT+(≥2) twice running = regression. Null if clean. */
+/** Pain gate for a slot. PAIN(3) once = hard stop; TIGHT+(≥2) twice running = regression. Null if clean.
+ *  Reads ALL sessions including post-BJJ — pain is pain regardless of when it was logged. */
 export function painState(S, slot) {
-  const h = historyFor(S, curEx(S, slot), 2);
+  const h = fullHistoryFor(S, curEx(S, slot), 2);
   if (!h.length) return null;
   const latest = h[0].e.pain;
   if (latest === 3) return { level: "stop", txt: "PAIN logged last session — regress or drop the movement. Pain is the hard stop." };
@@ -473,7 +488,11 @@ export function validateProposal(S, p) {
     return (r >= 0 && r < L.rungs.length - 1) ? null : "no next rung";
   }
   if (p.type === "start_deload") return null;
-  if (p.type === "override_load") { if (!p.exercise || typeof p.load !== "number") return "missing exercise/load"; return null; }
+  if (p.type === "override_load") {
+    if (!p.exercise || typeof p.load !== "number") return "missing exercise/load";
+    const inLib = Object.values(LIB).some(list => list.some(o => o.n === p.exercise));
+    return inLib ? null : "exercise not in library";
+  }
   return "unknown type";
 }
 
