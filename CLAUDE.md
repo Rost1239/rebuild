@@ -97,9 +97,13 @@ Remaining, by trigger rather than priority:
 
 4. ui.js extraction (hygiene, safe anytime) — the inline-handler/module-scope
    hazard is fenced by test/ui-handlers.test.js.
-5. Coach layer over HTTP — do when copy/paste review friction annoys, not
-   before. Vercel/Cloudflare function holding the key as env var; do NOT
-   hardcode a key. Copy-payload/paste-response flow stays as fallback.
+5. Coach layer over HTTP — superseded (2026-07-08) by a claude.ai Project as
+   the review layer: COPY PAYLOAD — PROJECT sends raw JSON (no embedded
+   prompt), payload carries last_review + last_proposals with outcomes,
+   PASTE RESPONSE accepts a whole prose+JSON reply (extractJSON in
+   src/draft.js takes the last fenced block). A serverless proxy would now
+   only buy speed at the cost of longitudinal memory — probably never worth
+   it. If ever built: key as env var, do NOT hardcode.
 7. IndexedDB migration — only if localStorage 5MB ever threatens (it won't soon).
 8. ESD module content — dormant until a comp date is set; template library
    behind esdPhase(), full prescriptions currently live in UI copy.
