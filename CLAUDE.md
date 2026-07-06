@@ -63,6 +63,8 @@ is coach-bypassable (calendar is discretionary, symptoms are not).
 6. AMRAP beats top-set parse for e1RM; AMRAP without RPE assumes RPE 9.
 7. Waves never advance on post-BJJ saves or during active deload.
 8. Banned movements never appear in LIB or pass proposal validation.
+9. Pain rules read ALL sessions incl. post-BJJ (fullHistoryFor) — the
+   eligibility filter is progression-only, never safety.
 
 ## Conventions
 
@@ -72,30 +74,39 @@ is coach-bypassable (calendar is discretionary, symptoms are not).
 - Tests: build state per-test, inject `today`, one behavioural assertion cluster per test.
 - Keep clarity over cleverness. Explicit null handling everywhere (`load: null` is
   meaningful — bodyweight movements).
+- index.html's script is an ES module: inline on*= handlers resolve against
+  window, so anything they reference must be window.*-exposed
+  (test/ui-handlers.test.js enforces this).
 
-## Task backlog (in priority order)
+## Task backlog
 
-1. `npm test` green, then raise engine.js branch coverage >90% (`vitest --coverage`
-   after `npm i -D @vitest/coverage-v8`). Target the untested branches: waveRx edge
-   weeks, historyFor with pain-only entries, tonnage with unparseable sets.
-2. Property-based tests for parseSets/bestE1RM (fast-check): random garbage never throws,
-   e1RM monotonic in reps and load.
-3. Audit engine.js against the invariants list; write a failing test for any bug
-   before fixing it.
-4. Port polish: index.html currently mirrors the artifact — extract render functions
-   into src/ui.js modules, keep index.html thin.
-5. Coach layer over HTTP: the artifact called api.anthropic.com keyless (claude.ai
-   proxies it). Outside claude.ai that needs a key — do NOT hardcode one. Options, in order:
-   a Vercel/Cloudflare serverless function holding the key as env var, or keep the
-   copy-payload/paste-response flow (already implemented in index.html).
-6. PWA: manifest + service worker so the app installs to the phone home screen and
-   works offline. Then deploy via GitHub Pages (`npm run build`, publish dist/).
-7. IndexedDB migration if localStorage 5MB ceiling ever threatens (it won't soon).
-8. ESD module content: session template library behind esdPhase(), currently phase
-   names only in engine (full prescriptions live in UI copy).
+Done (2026-07-05/06) — detail in git history:
+
+1. Coverage — engine.js 100% stmts / 99.6% branch (`npm run test:coverage`);
+   the only uncovered branch is the dead `|| []` fallback in validateProposal.
+2. fast-check property tests — parseSets/bestE1RM never throw (caught and fixed
+   a real crash on non-string `sets` input); e1RM monotonic in reps and load.
+3. Invariant audit — three fixes: painState reads ALL sessions (fullHistoryFor),
+   override_load validates against LIB, pl-tri def matched to its LIB name.
+   Plus the ladder-escalation symptom gate (see Coach proposals above).
+6. PWA + GitHub Pages — live at https://rost1239.github.io/rebuild/; push to
+   main deploys via .github/workflows/deploy.yml (tests gate the deploy).
+   Regenerate icons with `node scripts/make-icons.mjs`.
+
+Remaining, by trigger rather than priority:
+
+4. ui.js extraction (hygiene, safe anytime) — the inline-handler/module-scope
+   hazard is fenced by test/ui-handlers.test.js.
+5. Coach layer over HTTP — do when copy/paste review friction annoys, not
+   before. Vercel/Cloudflare function holding the key as env var; do NOT
+   hardcode a key. Copy-payload/paste-response flow stays as fallback.
+7. IndexedDB migration — only if localStorage 5MB ever threatens (it won't soon).
+8. ESD module content — dormant until a comp date is set; template library
+   behind esdPhase(), full prescriptions currently live in UI copy.
 
 ## Commands
 
 - `npm test` — run suite once. `npm run test:watch` — watch mode.
+- `npm run test:coverage` — coverage report (engine.js is the target).
 - `npm run dev` — vite dev server (localhost:5173).
 - `python analytics/analyze.py data/sample-state.json` — analytics over an export.
