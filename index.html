@@ -280,11 +280,11 @@ function render() {
   if (draft.flag === null) draft.flag = rolledToday ? "bjj" : "fresh";
 
   h += `<div class="sbar">
-    <input type="date" value="${draft.date}" onchange="draft.date=this.value;draft.flag=null;render()">
+    <input type="date" value="${draft.date}" onchange="setDraftDate(this.value)">
     <div class="flag">
-      <button class="${draft.flag === "fresh" ? "on" : ""}" onclick="draft.flag='fresh';render()">FRESH</button>
-      <button class="${draft.flag === "pre" ? "on pre" : ""}" onclick="draft.flag='pre';render()">PRE-BJJ</button>
-      <button class="${draft.flag === "bjj" ? "on post" : ""}" onclick="draft.flag='bjj';render()">POST-BJJ</button>
+      <button class="${draft.flag === "fresh" ? "on" : ""}" onclick="setFlag('fresh')">FRESH</button>
+      <button class="${draft.flag === "pre" ? "on pre" : ""}" onclick="setFlag('pre')">PRE-BJJ</button>
+      <button class="${draft.flag === "bjj" ? "on post" : ""}" onclick="setFlag('bjj')">POST-BJJ</button>
     </div></div>`;
 
   if (E.isDeload(S)) {
@@ -311,8 +311,8 @@ function render() {
   for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${draft.srpe === i ? "on" : ""}" onclick="setDraftSrpe(${i})">${i}</button>`;
   h += `<div class="sessmeta"><div class="lbl">SESSION LOAD + BODYWEIGHT</div>
     <div class="row" style="margin-top:0">
-      <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="draft.mins=this.value"></div>
-      <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="draft.bw=this.value"></div>
+      <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="setDraftField('mins',this.value)"></div>
+      <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="setDraftField('bw',this.value)"></div>
       <div class="fld"><label>SESSION RPE</label><div class="rpe">${srpeBtns}</div></div></div></div>`;
 
   h += `<div class="savebar"><div class="inner"><button class="save" onclick="saveSession()">SAVE SESSION</button></div></div>`;
@@ -428,10 +428,10 @@ function renderBJJ() {
     <div class="stat"><span class="k">Gym tonnage (7d)</span><span class="v">${E.weekTonnage(S).toLocaleString()} kg</span></div>
     <div class="stat"><span class="k">BJJ sessions (7d)</span><span class="v">${S.bjj.filter(b => b.date >= E.daysAgo(7)).length}</span></div></div>`;
   h += `<div class="panel"><h3>LOG A ROLL / ESD SESSION</h3>
-    <div class="row"><div class="fld"><label>DATE</label><input type="date" value="${bjjDraft.date}" style="color-scheme:dark" onchange="bjjDraft.date=this.value"></div>
-    <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${bjjDraft.mins}" onchange="bjjDraft.mins=this.value"></div></div>
+    <div class="row"><div class="fld"><label>DATE</label><input type="date" value="${bjjDraft.date}" style="color-scheme:dark" onchange="setBjjField('date',this.value)"></div>
+    <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${bjjDraft.mins}" onchange="setBjjField('mins',this.value)"></div></div>
     <div class="rpewrap"><label>SESSION RPE (1-10)</label><div class="rpe">${srpeBtns}</div></div>
-    <div class="fld note"><input type="text" placeholder="note — sparring / drilling / ESD: alactic, lactic, tempo" value="${bjjDraft.note}" onchange="bjjDraft.note=this.value"></div>
+    <div class="fld note"><input type="text" placeholder="note — sparring / drilling / ESD: alactic, lactic, tempo" value="${bjjDraft.note}" onchange="setBjjField('note',this.value)"></div>
     <div style="margin-top:12px"><button class="save" style="font-size:16px;padding:12px" onclick="saveBJJ()">LOG</button></div></div>`;
   if (S.bjj.length) {
     h += `<div class="panel"><h3>HISTORY</h3>`;
@@ -443,6 +443,14 @@ function renderBJJ() {
 }
 window.setBjjSrpe = i => { bjjDraft.srpe = bjjDraft.srpe === i ? null : i; render(); };
 window.setDraftSrpe = i => { draft.srpe = draft.srpe === i ? null : i; render(); };
+// Inline on*= handlers resolve against window, not module scope — everything
+// they touch must be exposed here (guarded by test/ui-handlers.test.js).
+// bjjDraft is reassigned on save, so expose setters, never the objects.
+window.setFlag = f => { draft.flag = f; render(); };
+window.setDraftDate = v => { draft.date = v; draft.flag = null; render(); };
+window.setDraftField = (k, v) => { draft[k] = v; };
+window.setBjjField = (k, v) => { bjjDraft[k] = v; };
+window.render = render;
 window.saveBJJ = async () => {
   if (!bjjDraft.mins || !bjjDraft.srpe) { toast("Need mins + sRPE"); return; }
   S.bjj.push({ id: "b" + Date.now(), date: bjjDraft.date, mins: +bjjDraft.mins, srpe: bjjDraft.srpe, note: bjjDraft.note });
