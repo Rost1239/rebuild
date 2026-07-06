@@ -370,6 +370,16 @@ describe("bestE1RM edges", () => {
   it("null when sets parse but RPE missing", () => {
     expect(E.bestE1RM(entry({ ex: "x", load: 100, sets: "4x4" }))).toBeNull();
   });
+  it("hostile ToPrimitive objects (JSON {\"toString\":\"\"}) → null, never throw", () => {
+    // found by fast-check seed -1138755548; real JSON can express this object
+    const hostile = JSON.parse('{"toString":""}');
+    expect(E.parseSets(hostile)).toBeNull();
+    expect(E.bestE1RM({ ex: "x", load: hostile, sets: "4x4", rpe: 7 })).toBeNull();
+    expect(E.bestE1RM({ ex: "x", load: 100, sets: hostile, amrap: hostile, rpe: hostile })).toBeNull();
+  });
+  it("non-positive AMRAP is ignored — top-set parse wins", () => {
+    expect(E.bestE1RM(entry({ ex: "x", load: 100, sets: "4x4", amrap: -1, rpe: 7 }))).toBeCloseTo(E.e1rm(100, 4, 7));
+  });
 });
 
 /* ---------- historyFor entry filtering ---------- */

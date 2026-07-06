@@ -166,21 +166,26 @@ export function zone(r) { if (r == null || r === "") return "n"; return r <= 7 ?
 export function rnd(x, step) { return Math.round(x / step) * step; }
 
 /** Parse "NxM" from free text; tolerates ×, spaces, trailing "/side". Null if unparseable.
- *  Coerces non-string input (imported state JSON may carry anything) — never throws. */
+ *  Strings only — any other type parses to null, never throws. (String() coercion is
+ *  NOT safe here: JSON like {"toString":""} throws on ToPrimitive.) */
 export function parseSets(s) {
-  const m = String(s ?? "").match(/(\d+)\s*[x×X]\s*(\d+)/);
+  const m = (typeof s === "string" ? s : "").match(/(\d+)\s*[x×X]\s*(\d+)/);
   return m ? { n: +m[1], reps: +m[2] } : null;
 }
 
 /** Epley with RIR adjustment: effective reps = reps + (10 - RPE). */
 export function e1rm(load, reps, rpe) { return load * (1 + (reps + (10 - rpe)) / 30); }
 
-/** e1RM for a logged entry. AMRAP takes precedence over top-set parse; RPE defaults to 9 for AMRAP. */
+/** e1RM for a logged entry. AMRAP takes precedence over top-set parse; RPE defaults to 9 for AMRAP.
+ *  Non-numeric load/amrap/rpe (imported-state garbage) degrade to null — never throw. */
 export function bestE1RM(e) {
-  if (e.load == null) return null;
-  if (e.amrap) return e1rm(e.load, e.amrap, e.rpe ?? 9);
+  const load = typeof e.load === "number" ? e.load : null;
+  if (load == null) return null;
+  const amrap = typeof e.amrap === "number" && e.amrap > 0 ? e.amrap : null;
+  const rpe = typeof e.rpe === "number" ? e.rpe : null;
+  if (amrap) return e1rm(load, amrap, rpe ?? 9);
   const p = parseSets(e.sets);
-  if (p && e.rpe != null) return e1rm(e.load, p.reps, e.rpe);
+  if (p && rpe != null) return e1rm(load, p.reps, rpe);
   return null;
 }
 

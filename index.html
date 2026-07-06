@@ -31,14 +31,14 @@
   .wk b{color:var(--text)}
   .tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
   .tab{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.05em;text-align:center;
-       padding:10px 0;border:1px solid var(--line);border-radius:8px;color:var(--muted);cursor:pointer;background:var(--surface)}
+       padding:13px 0;border:1px solid var(--line);border-radius:8px;color:var(--muted);cursor:pointer;background:var(--surface)}
   .tab.on{color:var(--bg);background:var(--text);border-color:var(--text)}
   .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--wave);margin-left:4px;vertical-align:middle}
   .sbar{display:flex;gap:8px;align-items:center;margin:12px 0 8px;flex-wrap:wrap}
   .sbar input[type=date]{background:var(--surface);border:1px solid var(--line);color:var(--text);
-       font-family:inherit;font-size:13px;padding:9px 10px;border-radius:8px;flex:1;min-width:130px;color-scheme:dark}
+       font-family:inherit;font-size:13px;padding:12px 10px;border-radius:8px;flex:1;min-width:130px;color-scheme:dark;min-height:44px}
   .flag{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .flag button{background:var(--surface);border:0;color:var(--muted);font-family:inherit;font-size:11px;padding:10px 10px;cursor:pointer}
+  .flag button{background:var(--surface);border:0;color:var(--muted);font-family:inherit;font-size:11px;padding:13px 12px;min-height:44px;cursor:pointer}
   .flag button.on{background:var(--surface2);color:var(--text);font-weight:600}
   .flag button.on.pre{color:var(--wave)}
   .flag button.on.post{color:var(--hold)}
@@ -55,7 +55,7 @@
   .exname{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:19px;letter-spacing:.03em;line-height:1.15}
   .target{font-size:11px;color:var(--muted);margin-top:3px}
   .swap{background:none;border:1px solid var(--line);color:var(--muted);font-family:inherit;font-size:10px;
-       padding:4px 8px;border-radius:6px;cursor:pointer;flex-shrink:0;letter-spacing:.05em}
+       padding:8px 12px;min-height:44px;min-width:44px;border-radius:6px;cursor:pointer;flex-shrink:0;letter-spacing:.05em}
   .chip{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;padding:4px 8px;border-radius:20px;margin-top:8px}
   .chip.cleared{color:var(--cleared);background:var(--cleared-dim)}
   .chip.hold{color:var(--hold);background:var(--hold-dim)}
@@ -68,24 +68,31 @@
   .stall.pain{border-color:rgba(242,109,91,.4);background:var(--breach-dim);color:var(--breach)}
   .stall.ladder{border-color:rgba(74,222,156,.4);background:var(--cleared-dim);color:var(--cleared)}
   .stall button{background:var(--wave);color:var(--bg);border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;
-       padding:6px 10px;margin-top:7px;cursor:pointer;margin-right:8px}
+       padding:12px 14px;min-height:44px;margin-top:7px;cursor:pointer;margin-right:8px}
   .stall.pain button{background:var(--breach)}
   .stall.ladder button{background:var(--cleared)}
-  .stall .ghost{background:none;color:inherit;text-decoration:underline;padding:6px 0}
-  .wexit{background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px;font-family:inherit}
+  .stall .ghost{background:none;color:inherit;text-decoration:underline;padding:12px 0}
+  .wexit{background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline;padding:12px 4px;margin-left:4px;font-family:inherit}
   .row{display:flex;gap:8px;margin-top:10px}
   .fld{flex:1}
   .fld label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
   .fld input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
-       font-family:inherit;font-size:15px;padding:10px;border-radius:8px}
+       font-family:inherit;font-size:15px;padding:12px 10px;min-height:44px;border-radius:8px}
   .fld input:focus{outline:none;border-color:var(--muted)}
+  .fld input.pre{color:var(--muted);border-style:dashed}
   .fld.load{flex:0 0 84px}
+  .fld.stepper{flex:0 0 158px}
   .fld.amrap{flex:0 0 74px}
+  .stepgrp{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+  .stepgrp input{flex:1;min-width:0;border:0;border-radius:0;text-align:center;padding:12px 2px}
+  .stepgrp input.pre{color:var(--muted)}
+  .stepgrp .step{flex:0 0 44px;min-height:44px;background:var(--surface2);border:0;color:var(--text);
+       font-family:inherit;font-size:18px;cursor:pointer;line-height:1}
   .rpewrap{margin-top:10px}
   .rpewrap label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:5px}
   .rpe{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
   .rpe::-webkit-scrollbar{display:none}
-  .rpe button{flex:0 0 auto;min-width:44px;padding:9px 0;border-radius:8px;border:1px solid var(--line);
+  .rpe button{flex:0 0 auto;min-width:44px;min-height:44px;padding:12px 0;border-radius:8px;border:1px solid var(--line);
        background:var(--bg);color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer}
   .rpe button.z-c{border-color:rgba(74,222,156,.35)}
   .rpe button.z-h{border-color:rgba(245,176,76,.35)}
@@ -94,7 +101,7 @@
   .rpe button.on.z-h{background:var(--hold);color:var(--bg);border-color:var(--hold);font-weight:600}
   .rpe button.on.z-b{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
   .painrow{display:flex;gap:5px;margin-top:8px}
-  .painrow button{flex:1;padding:8px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg);
+  .painrow button{flex:1;padding:12px 0;min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg);
        color:var(--muted);font-family:inherit;font-size:10px;letter-spacing:.05em;cursor:pointer}
   .painrow button.on.p0{background:var(--cleared);color:var(--bg);border-color:var(--cleared);font-weight:600}
   .painrow button.on.p1{background:var(--surface2);color:var(--text);border-color:var(--muted);font-weight:600}
@@ -102,7 +109,11 @@
   .painrow button.on.p3{background:var(--breach);color:var(--bg);border-color:var(--breach);font-weight:600}
   .note input{margin-top:10px}
   .addex{width:100%;background:none;border:1px dashed var(--line);color:var(--muted);font-family:inherit;
-       font-size:13px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px}
+       font-size:13px;padding:14px;min-height:44px;border-radius:12px;cursor:pointer;margin-bottom:10px}
+  .addex.bulk{border-style:solid;border-color:rgba(74,222,156,.4);color:var(--cleared);font-weight:600;letter-spacing:.04em}
+  .done-line{display:none;cursor:pointer;padding:12px 0 4px;font-size:12px;color:var(--cleared);font-weight:500}
+  .card.done .done-line{display:block}
+  .card.done .cbody{display:none}
   .sessmeta{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
   .sessmeta .lbl{font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:8px}
   .savebar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(transparent,var(--bg) 30%);padding:18px 12px 20px;z-index:6}
@@ -117,7 +128,7 @@
        max-height:70vh;overflow-y:auto;padding:16px}
   .sheet h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.05em;margin-bottom:4px}
   .sheet .sub{font-size:11px;color:var(--muted);margin-bottom:12px}
-  .opt{padding:13px 10px;border-bottom:1px solid rgba(44,53,64,.5);cursor:pointer;font-size:14px}
+  .opt{padding:14px 10px;min-height:44px;border-bottom:1px solid rgba(44,53,64,.5);cursor:pointer;font-size:14px}
   .opt small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
   .opt.cur{color:var(--cleared)}
   .sheet .cancel{width:100%;margin-top:12px;background:var(--surface2);border:0;color:var(--muted);
@@ -139,10 +150,10 @@
   .painmark{font-size:10px;font-weight:600}
   .painmark.p2{color:var(--hold)} .painmark.p3{color:var(--breach)}
   .enote{grid-column:1/-1;font-size:11px;color:var(--muted);padding-bottom:4px;font-style:italic}
-  .del{background:none;border:0;color:var(--breach);font-family:inherit;font-size:11px;cursor:pointer;padding:8px 0 2px;letter-spacing:.05em}
+  .del{background:none;border:0;color:var(--breach);font-family:inherit;font-size:11px;cursor:pointer;padding:14px 0 8px;letter-spacing:.05em}
   .logtools{display:flex;gap:8px;margin:14px 0}
   .logtools button{flex:1;background:var(--surface);border:1px solid var(--line);color:var(--muted);
-       font-family:inherit;font-size:11px;padding:11px 4px;border-radius:8px;cursor:pointer;letter-spacing:.02em}
+       font-family:inherit;font-size:11px;padding:13px 4px;min-height:44px;border-radius:8px;cursor:pointer;letter-spacing:.02em}
   .empty{color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
   .loading{color:var(--muted);text-align:center;padding:60px 0;font-size:13px}
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
@@ -151,8 +162,8 @@
   .stat:last-child{border-bottom:0}
   .stat .k{color:var(--muted)} .stat .v{font-weight:600}
   .v.ok{color:var(--cleared)} .v.warn{color:var(--hold)} .v.bad{color:var(--breach)}
-  .bjjrow{display:grid;grid-template-columns:80px 1fr 50px 30px;gap:6px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:center}
-  .bjjrow .d{color:var(--muted)} .bjjrow .x{background:none;border:0;color:var(--breach);cursor:pointer;font-family:inherit}
+  .bjjrow{display:grid;grid-template-columns:80px 1fr 50px 44px;gap:6px;padding:8px 0;border-bottom:1px solid rgba(44,53,64,.5);font-size:12px;align-items:center}
+  .bjjrow .d{color:var(--muted)} .bjjrow .x{background:none;border:0;color:var(--breach);cursor:pointer;font-family:inherit;min-height:44px;min-width:44px}
   .coachbtn{width:100%;background:var(--wave);color:var(--bg);border:0;border-radius:10px;
        font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.08em;padding:13px;cursor:pointer;margin-bottom:8px}
   .review{font-size:13px;line-height:1.65;white-space:pre-wrap;margin-top:12px}
@@ -160,7 +171,7 @@
   .prop{border:1px solid rgba(127,178,255,.35);background:var(--wave-dim);border-radius:10px;padding:11px 12px;margin-top:10px;font-size:12px;line-height:1.55}
   .prop .ptype{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--wave);margin-bottom:3px}
   .prop .pbtns{margin-top:8px}
-  .prop button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:7px 12px;cursor:pointer;margin-right:8px}
+  .prop button{border:0;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;padding:12px 14px;min-height:44px;cursor:pointer;margin-right:8px}
   .prop .acc{background:var(--cleared);color:var(--bg)}
   .prop .dis{background:none;color:var(--muted);text-decoration:underline}
   .prop.invalid{border-color:var(--line);background:var(--surface2);color:var(--muted)}
@@ -191,6 +202,7 @@
 <script type="module">
 import * as E from "./src/engine.js";
 import { storage } from "./src/storage.js";
+import { prefillFor, displayField, stepValue, filledEntry, withRecTarget } from "./src/draft.js";
 
 const { SLOTS, LIB, LADDERS, DAY_LABEL, RPE_VALUES, PAIN_LABELS, FLAG_LABELS } = E;
 
@@ -207,6 +219,75 @@ let S = E.newState();
 let view = "push";
 let draft = { date: E.todayISO(), flag: null, entries: {}, custom: { push: [], lower: [], pull: [] }, mins: "", srpe: null, bw: "" };
 let bjjDraft = { date: E.todayISO(), mins: "", srpe: null, note: "" };
+// Ghost values shown in untouched inputs, keyed like draft.entries. Display-only:
+// they enter draft.entries via materialize() on first touch of a card, so an
+// untouched card can never be saved as a logged exercise.
+let prefills = {};
+
+/** First interaction with a card commits its displayed ghosts to the draft
+ *  and solidifies them visually. All field/chip/stepper handlers route here. */
+function materialize(key) {
+  if (!draft.entries[key]) {
+    const p = prefills[key] || {};
+    const e = draft.entries[key] = {};
+    if (p.load != null) e.load = p.load;
+    if (p.sets) e.sets = p.sets;
+    for (const pref of ["ld-", "st-"]) {
+      const el = document.getElementById(pref + encodeURIComponent(key));
+      if (el) el.classList.remove("pre");
+    }
+  }
+  return draft.entries[key];
+}
+
+/** In-place chip toggle — no innerHTML rebuild, no focus/scroll loss. */
+function patchChips(id, val) {
+  const row = document.getElementById(id);
+  if (row) for (const b of row.children) b.classList.toggle("on", val != null && +b.dataset.v === val);
+}
+
+// Cards the user explicitly reopened after they auto-collapsed.
+let openCards = new Set();
+
+function doneTxt(d) {
+  return `✓ ${d.load != null ? d.load + "kg" : "—"} · ${d.sets || "—"}${d.amrap ? " A" + d.amrap : ""} · RPE ${d.rpe}${d.pain >= 2 ? " · " + PAIN_LABELS[d.pain] : ""}`;
+}
+function isDone(key, d) { return d.rpe != null && d.pain != null && !openCards.has(key); }
+
+/** Collapse/expand a card in place once RPE + pain are both logged.
+ *  Pain-unlogged cards stay open on purpose — the open card is the nudge. */
+function maybeCollapse(key) {
+  const d = draft.entries[key] || {};
+  const k = encodeURIComponent(key);
+  const card = document.getElementById("card-" + k);
+  if (!card) return;
+  const done = isDone(key, d);
+  card.classList.toggle("done", done);
+  if (done) {
+    const dl = document.getElementById("dl-" + k);
+    if (dl) dl.textContent = doneTxt(d) + " — tap to edit";
+  }
+}
+
+function lastMins() {
+  const s = S.sessions.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  return s && s.mins ? String(s.mins) : "";
+}
+
+function filledCount() {
+  let n = 0;
+  for (const [key, d] of Object.entries(draft.entries))
+    if (key.startsWith(view + "|") && filledEntry(d)) n++;
+  return n;
+}
+function saveBtnTxt() {
+  const n = filledCount();
+  return n ? `SAVE — ${n} EXERCISE${n > 1 ? "S" : ""}` : "SAVE SESSION";
+}
+function updateSaveBar() {
+  const b = document.getElementById("savebtn");
+  if (b) b.textContent = saveBtnTxt();
+}
 
 async function boot() {
   try {
@@ -215,6 +296,7 @@ async function boot() {
   } catch (e) { /* fresh install */ }
   if (!S.sessions.length) { S.sessions = SEED.slice(); await persist(); }
   if (E.reclassify(S)) await persist();
+  draft.mins = lastMins();
 }
 async function persist() {
   try { await storage.set("rebuild-state", JSON.stringify(S)); return true; }
@@ -303,35 +385,51 @@ function render() {
   if (draft.flag === "bjj") h += `<div class="ramp">POST-BJJ — target RPE, take resulting load. Doesn't count toward progression. Drop primers.</div>`;
   if (wk <= 2) h += `<div class="ramp">WK ${wk} RAMP — sets cut ~⅓, RPE 7 cap, nothing grinds</div>`;
 
-  for (const slot of SLOTS[view]) h += renderSlot(slot);
-  for (const c of draft.custom[view]) h += renderCustom(c);
+  // rebuild this view's prefills from scratch — stale keys (e.g. after a swap)
+  // must never survive into logAllAsShown
+  for (const k of Object.keys(prefills)) if (k.startsWith(view + "|")) delete prefills[k];
+  let cards = "";
+  for (const slot of SLOTS[view]) cards += renderSlot(slot);
+  for (const c of draft.custom[view]) cards += renderCustom(c);
+  const ghosts = Object.keys(prefills).filter(k =>
+    k.startsWith(view + "|") && !draft.entries[k] && (prefills[k].load != null || prefills[k].sets)).length;
+  if (ghosts) h += `<button class="addex bulk" onclick="logAllAsShown()">LOG ALL AS SHOWN (${ghosts})</button>`;
+  h += cards;
   h += `<button class="addex" onclick="addCustom()">+ add exercise to this session</button>`;
 
   let srpeBtns = "";
-  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${draft.srpe === i ? "on" : ""}" onclick="setDraftSrpe(${i})">${i}</button>`;
+  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${draft.srpe === i ? "on" : ""}" data-v="${i}" onclick="setDraftSrpe(${i})">${i}</button>`;
   h += `<div class="sessmeta"><div class="lbl">SESSION LOAD + BODYWEIGHT</div>
     <div class="row" style="margin-top:0">
       <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="setDraftField('mins',this.value)"></div>
       <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="setDraftField('bw',this.value)"></div>
-      <div class="fld"><label>SESSION RPE</label><div class="rpe">${srpeBtns}</div></div></div></div>`;
+      <div class="fld"><label>SESSION RPE</label><div class="rpe" id="srpe-sess">${srpeBtns}</div></div></div></div>`;
 
-  h += `<div class="savebar"><div class="inner"><button class="save" onclick="saveSession()">SAVE SESSION</button></div></div>`;
+  h += `<div class="savebar"><div class="inner"><button class="save" id="savebtn" onclick="saveSession()">${saveBtnTxt()}</button></div></div>`;
   app.innerHTML = h;
 }
 
-function inputBlock(key, d) {
+function inputBlock(key, d, inc) {
+  const pre = prefills[key] || {};
+  const k = encodeURIComponent(key);
+  const load = displayField(d, pre, "load"), sets = displayField(d, pre, "sets");
   let rpeBtns = RPE_VALUES.map(v => {
     const z = "z-" + E.zone(v); const on = d.rpe === v ? "on" : "";
-    return `<button class="${z} ${on}" onclick="setRPE('${key}',${v})">${v}</button>`; }).join("");
+    return `<button class="${z} ${on}" data-v="${v}" onclick="setRPE('${key}',${v})">${v}</button>`; }).join("");
   let painBtns = PAIN_LABELS.map((l, i) =>
-    `<button class="p${i} ${d.pain === i ? "on p" + i : ""}" onclick="setPain('${key}',${i})">${l}</button>`).join("");
+    `<button class="p${i} ${d.pain === i ? "on" : ""}" data-v="${i}" onclick="setPain('${key}',${i})">${l}</button>`).join("");
   return `<div class="row">
-      <div class="fld load"><label>LOAD KG</label><input type="number" inputmode="decimal" step="0.5" value="${d.load ?? ""}" onchange="setF('${key}','load',this.value)"></div>
-      <div class="fld"><label>SETS × REPS</label><input type="text" placeholder="e.g. 4x4" value="${d.sets ?? ""}" onchange="setF('${key}','sets',this.value)"></div>
+      <div class="fld stepper"><label>LOAD KG${load.pre ? (pre.target ? " · TARGET" : " · LAST") : ""}</label>
+        <div class="stepgrp">
+          <button class="step" onclick="stepLoad('${key}',-${inc})">−</button>
+          <input id="ld-${k}" class="${load.pre ? "pre" : ""}" type="number" inputmode="decimal" step="0.5" value="${load.val}" onchange="setF('${key}','load',this.value)">
+          <button class="step" onclick="stepLoad('${key}',${inc})">+</button>
+        </div></div>
+      <div class="fld"><label>SETS × REPS${sets.pre ? " · LAST" : ""}</label><input id="st-${k}" class="${sets.pre ? "pre" : ""}" type="text" placeholder="e.g. 4x4" value="${sets.val}" onchange="setF('${key}','sets',this.value)"></div>
       <div class="fld amrap"><label>AMRAP</label><input type="number" inputmode="numeric" placeholder="—" value="${d.amrap ?? ""}" onchange="setF('${key}','amrap',this.value)"></div>
     </div>
-    <div class="rpewrap"><label>TOP-SET RPE</label><div class="rpe">${rpeBtns}</div></div>
-    <div class="rpewrap" style="margin-top:8px"><label>JOINT / TISSUE</label><div class="painrow">${painBtns}</div></div>
+    <div class="rpewrap"><label>TOP-SET RPE</label><div class="rpe" id="rpe-${k}">${rpeBtns}</div></div>
+    <div class="rpewrap" style="margin-top:8px"><label>JOINT / TISSUE</label><div class="painrow" id="pn-${k}">${painBtns}</div></div>
     <div class="fld note"><input type="text" placeholder="note" value="${d.note ?? ""}" onchange="setF('${key}','note',this.value)"></div>`;
 }
 
@@ -340,6 +438,7 @@ function renderSlot(slot) {
   const key = view + "|" + ex;
   const d = draft.entries[key] || {};
   const rec = E.recommend(S, slot);
+  prefills[key] = withRecTarget(prefillFor(S, ex), rec.cls, slot.inc);
   const h1 = E.historyFor(S, ex, 1);
   let e1txt = "";
   if (h1.length) { const v = E.bestE1RM(h1[0].e); if (v != null && slot.model === "gate") e1txt = ` · e1RM ~${Math.round(v)}`; }
@@ -365,21 +464,32 @@ function renderSlot(slot) {
     extras += `<div class="stall">STALL — same load, RPE rising 2 progression weeks. Linear phase over.<button onclick="doStartWave('${slot.id}','${view}')">SWITCH TO WAVES</button></div>`;
 
   const waveExit = w && w.active ? `<button class="wexit" onclick="doExitWave('${slot.id}')">exit wave</button>` : "";
-  return `<div class="card">
+  const k = encodeURIComponent(key);
+  const done = isDone(key, d);
+  return `<div class="card ${done ? "done" : ""}" id="card-${k}">
     <div class="top"><div><div class="exname">${ex}</div><div class="target">${slot.t}</div></div>
     <button class="swap" onclick="openSub('${slot.id}','${view}')">SWAP</button></div>
+    <div class="done-line" id="dl-${k}" onclick="reopenCard('${key}')">${done ? doneTxt(d) + " — tap to edit" : ""}</div>
+    <div class="cbody">
     <div><span class="chip ${rec.cls}">${rec.txt}</span>${waveExit}</div>
     <div class="last">${lastTxt}</div>
     ${extras}
-    ${inputBlock(key, d)}
+    ${inputBlock(key, d, slot.inc || 2.5)}
+    </div>
   </div>`;
 }
 function renderCustom(name) {
   const key = view + "|" + name;
   const d = draft.entries[key] || {};
-  return `<div class="card">
+  prefills[key] = prefillFor(S, name);
+  const k = encodeURIComponent(key);
+  const done = isDone(key, d);
+  return `<div class="card ${done ? "done" : ""}" id="card-${k}">
     <div class="top"><div><div class="exname">${name}</div><div class="target">custom — this session</div></div></div>
-    ${inputBlock(key, d)}
+    <div class="done-line" id="dl-${k}" onclick="reopenCard('${key}')">${done ? doneTxt(d) + " — tap to edit" : ""}</div>
+    <div class="cbody">
+    ${inputBlock(key, d, 2.5)}
+    </div>
   </div>`;
 }
 
@@ -421,7 +531,7 @@ function renderBJJ() {
   const rc = E.combinedACWR(S), rb = E.bjjACWR(S);
   const cls = v => v == null ? "" : (v > 1.5 ? "bad" : (v > 1.3 ? "warn" : "ok"));
   let srpeBtns = "";
-  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${bjjDraft.srpe === i ? "on" : ""}" onclick="setBjjSrpe(${i})">${i}</button>`;
+  for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${bjjDraft.srpe === i ? "on" : ""}" data-v="${i}" onclick="setBjjSrpe(${i})">${i}</button>`;
   let h = `<div class="panel"><h3>ATHLETE LOAD</h3>
     <div class="stat"><span class="k">Combined ACWR (gym+BJJ)</span><span class="v ${cls(rc)}">${rc == null ? "— (need history)" : rc.toFixed(2)}</span></div>
     <div class="stat"><span class="k">BJJ-only ACWR</span><span class="v ${cls(rb)}">${rb == null ? "—" : rb.toFixed(2)}</span></div>
@@ -430,7 +540,7 @@ function renderBJJ() {
   h += `<div class="panel"><h3>LOG A ROLL / ESD SESSION</h3>
     <div class="row"><div class="fld"><label>DATE</label><input type="date" value="${bjjDraft.date}" style="color-scheme:dark" onchange="setBjjField('date',this.value)"></div>
     <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${bjjDraft.mins}" onchange="setBjjField('mins',this.value)"></div></div>
-    <div class="rpewrap"><label>SESSION RPE (1-10)</label><div class="rpe">${srpeBtns}</div></div>
+    <div class="rpewrap"><label>SESSION RPE (1-10)</label><div class="rpe" id="srpe-bjj">${srpeBtns}</div></div>
     <div class="fld note"><input type="text" placeholder="note — sparring / drilling / ESD: alactic, lactic, tempo" value="${bjjDraft.note}" onchange="setBjjField('note',this.value)"></div>
     <div style="margin-top:12px"><button class="save" style="font-size:16px;padding:12px" onclick="saveBJJ()">LOG</button></div></div>`;
   if (S.bjj.length) {
@@ -441,8 +551,8 @@ function renderBJJ() {
   }
   return h;
 }
-window.setBjjSrpe = i => { bjjDraft.srpe = bjjDraft.srpe === i ? null : i; render(); };
-window.setDraftSrpe = i => { draft.srpe = draft.srpe === i ? null : i; render(); };
+window.setBjjSrpe = i => { bjjDraft.srpe = bjjDraft.srpe === i ? null : i; patchChips("srpe-bjj", bjjDraft.srpe); };
+window.setDraftSrpe = i => { draft.srpe = draft.srpe === i ? null : i; patchChips("srpe-sess", draft.srpe); };
 // Inline on*= handlers resolve against window, not module scope — everything
 // they touch must be exposed here (guarded by test/ui-handlers.test.js).
 // bjjDraft is reassigned on save, so expose setters, never the objects.
@@ -581,20 +691,62 @@ function renderLog() {
 
 window.setView = v => { view = v; render(); window.scrollTo(0, 0); };
 window.setF = (key, f, val) => {
-  draft.entries[key] = draft.entries[key] || {};
-  if (f === "load") draft.entries[key][f] = val === "" ? null : parseFloat(val);
-  else if (f === "amrap") draft.entries[key][f] = val === "" ? null : parseInt(val);
-  else draft.entries[key][f] = val;
+  const d = materialize(key);
+  if (f === "load") d[f] = val === "" ? null : parseFloat(val);
+  else if (f === "amrap") d[f] = val === "" ? null : parseInt(val);
+  else d[f] = val;
+  const ids = { load: "ld-", sets: "st-" };
+  if (ids[f]) {
+    const el = document.getElementById(ids[f] + encodeURIComponent(key));
+    if (el) el.classList.remove("pre");
+  }
+  updateSaveBar();
 };
-window.setRPE = (key, v) => { draft.entries[key] = draft.entries[key] || {}; draft.entries[key].rpe = (draft.entries[key].rpe === v) ? null : v; render(); };
-window.setPain = (key, v) => { draft.entries[key] = draft.entries[key] || {}; draft.entries[key].pain = (draft.entries[key].pain === v) ? null : v; render(); };
+window.stepLoad = (key, delta) => {
+  const d = materialize(key);
+  d.load = stepValue(d.load, delta);
+  const el = document.getElementById("ld-" + encodeURIComponent(key));
+  if (el) { el.value = d.load; el.classList.remove("pre"); }
+  updateSaveBar();
+};
+window.setRPE = (key, v) => {
+  const d = materialize(key);
+  d.rpe = d.rpe === v ? null : v;
+  patchChips("rpe-" + encodeURIComponent(key), d.rpe);
+  openCards.delete(key); // re-completing a reopened card re-arms collapse
+  maybeCollapse(key);
+  updateSaveBar();
+};
+window.setPain = (key, v) => {
+  const d = materialize(key);
+  d.pain = d.pain === v ? null : v;
+  patchChips("pn-" + encodeURIComponent(key), d.pain);
+  openCards.delete(key);
+  maybeCollapse(key);
+  updateSaveBar();
+};
+window.reopenCard = key => {
+  openCards.add(key);
+  const card = document.getElementById("card-" + encodeURIComponent(key));
+  if (card) card.classList.remove("done");
+};
+window.logAllAsShown = () => {
+  let n = 0;
+  for (const key of Object.keys(prefills)) {
+    if (!key.startsWith(view + "|")) continue;
+    const p = prefills[key];
+    if (!p || (p.load == null && !p.sets)) continue;
+    if (!draft.entries[key]) { materialize(key); n++; }
+  }
+  if (n) { render(); toast(n + " committed — set RPEs"); }
+};
 window.addCustom = () => { const n = prompt("Exercise name"); if (n && n.trim()) { draft.custom[view].push(n.trim()); render(); } };
 window.saveSession = async () => {
   const entries = [];
   for (const [key, d] of Object.entries(draft.entries)) {
     const i = key.indexOf("|"); const day = key.slice(0, i), ex = key.slice(i + 1);
     if (day !== view) continue;
-    if (d.load == null && !d.sets && d.rpe == null && d.pain == null && d.amrap == null && !d.note) continue;
+    if (!filledEntry(d)) continue;
     entries.push({ ex, load: d.load ?? null, sets: d.sets || "", amrap: d.amrap ?? null, rpe: d.rpe ?? null, pain: d.pain ?? null, note: d.note || "" });
   }
   if (!entries.length) { toast("Nothing filled in"); return; }
@@ -606,7 +758,8 @@ window.saveSession = async () => {
   const ok = await persist();
   if (ok) {
     for (const key of Object.keys(draft.entries)) if (key.startsWith(view + "|")) delete draft.entries[key];
-    draft.custom[view] = []; draft.flag = null; draft.mins = ""; draft.srpe = null; draft.bw = "";
+    draft.custom[view] = []; draft.flag = null; draft.mins = lastMins(); draft.srpe = null; draft.bw = "";
+    openCards.clear();
     toast("Session saved"); render();
   } else S.sessions.pop();
 };
