@@ -74,7 +74,7 @@
   .stall .ghost{background:none;color:inherit;text-decoration:underline;padding:12px 0}
   .wexit{background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;text-decoration:underline;padding:12px 4px;margin-left:4px;font-family:inherit}
   .row{display:flex;gap:8px;margin-top:10px}
-  .fld{flex:1}
+  .fld{flex:1;min-width:0} /* min-width:0 — let inner scroll strips/inputs shrink instead of overflowing the viewport */
   .fld label{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
   .fld input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
        font-family:inherit;font-size:15px;padding:12px 10px;min-height:44px;border-radius:8px}
@@ -202,7 +202,7 @@
 <script type="module">
 import * as E from "./src/engine.js";
 import { storage } from "./src/storage.js";
-import { prefillFor, displayField, stepValue, filledEntry, withRecTarget } from "./src/draft.js";
+import { prefillFor, displayField, stepValue, filledEntry, withRecTarget, extractJSON } from "./src/draft.js";
 
 const { SLOTS, LIB, LADDERS, DAY_LABEL, RPE_VALUES, PAIN_LABELS, FLAG_LABELS } = E;
 
@@ -312,20 +312,28 @@ function coachPayload() {
     week: E.weekNum(S), slots: slotTable, substitutions: S.subs, waves: S.waves, deload: S.deload,
     overrides: S.overrides, comp: S.comp,
     combined_acwr: E.combinedACWR(S), bjj_acwr: E.bjjACWR(S), rpe_drift_lifts: E.rpeDriftCount(S),
-    gym_sessions: S.sessions.slice(-12), bjj_last_28d: S.bjj.filter(b => b.date >= E.daysAgo(28))
+    gym_sessions: S.sessions.slice(-12), bjj_last_28d: S.bjj.filter(b => b.date >= E.daysAgo(28)),
+    // longitudinal round-trip: the coach sees its own last review and what
+    // happened to each proposal (accepted / dismissed / invalid)
+    last_review: S.lastReview,
+    last_proposals: (S.proposals || []).map(p => ({ type: p.type, slot_id: p.slot_id, exercise: p.exercise, load: p.load, tm: p.tm, reason: p.reason, state: p.state }))
   };
 }
 const COACH_PROMPT = 'You are the audit layer of a strength programme for a detrained powerlifter (old 140/140/180 @94kg, now ~83kg) training BJJ 2-3x/wk (brown belt). Audit the log for what deterministic rules miss: pain/click trends, RPE-at-load drift, flag misuse, ladder timing, load trajectory. User has elite gym knowledge — be direct and technical. Respond with ONLY valid JSON, no markdown fences, exactly this shape: {"status":"2-3 line assessment","flags":["most important first, cite log evidence"],"next_week":"per-lift deltas where you would override or confirm the engine","proposals":[{"type":"set_sub|start_wave|exit_wave|advance_ladder|start_deload|override_load","slot_id":"from slots table","exercise":"for set_sub (must be in that slot allowed list) or override_load","load":0,"tm":0,"reason":"one line"}]}. Only propose actions warranted by evidence; empty proposals array is fine. DATA: ';
 
+window.copyPayloadOnly = () => {
+  navigator.clipboard.writeText(JSON.stringify(coachPayload()))
+    .then(() => toast("Payload copied — paste into the Coach Project"));
+};
 window.copyReviewPayload = () => {
   const text = COACH_PROMPT + JSON.stringify(coachPayload());
-  navigator.clipboard.writeText(text).then(() => toast("Payload copied — paste into Claude, then paste the JSON reply back"));
+  navigator.clipboard.writeText(text).then(() => toast("Prompt+payload copied — for a one-shot chat"));
 };
 window.pasteReviewResponse = async () => {
-  const raw = prompt("Paste the JSON response from Claude:");
+  const raw = prompt("Paste Claude's reply (the whole message is fine):");
   if (!raw) return;
   try {
-    const j = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    const j = JSON.parse(extractJSON(raw));
     S.lastReview = { date: new Date().toISOString().slice(0, 16).replace("T", " "),
       text: "STATUS\n" + (j.status || "") + "\n\nFLAGS\n" + (j.flags || []).map(f => "• " + f).join("\n") + "\n\nNEXT WEEK\n" + (j.next_week || "") };
     S.proposals = (j.proposals || []).map(p => ({ ...p, state: "pending" }));
@@ -401,9 +409,9 @@ function render() {
   for (let i = 1; i <= 10; i++) srpeBtns += `<button class="${i >= 8 ? "z-b" : (i >= 6 ? "z-h" : "z-c")} ${draft.srpe === i ? "on" : ""}" data-v="${i}" onclick="setDraftSrpe(${i})">${i}</button>`;
   h += `<div class="sessmeta"><div class="lbl">SESSION LOAD + BODYWEIGHT</div>
     <div class="row" style="margin-top:0">
-      <div class="fld load"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="setDraftField('mins',this.value)"></div>
-      <div class="fld load"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="setDraftField('bw',this.value)"></div>
-      <div class="fld"><label>SESSION RPE</label><div class="rpe" id="srpe-sess">${srpeBtns}</div></div></div></div>`;
+      <div class="fld"><label>MINS</label><input type="number" inputmode="numeric" value="${draft.mins}" onchange="setDraftField('mins',this.value)"></div>
+      <div class="fld"><label>BW KG</label><input type="number" inputmode="decimal" step="0.1" value="${draft.bw}" onchange="setDraftField('bw',this.value)"></div></div>
+    <div class="rpewrap"><label>SESSION RPE</label><div class="rpe" id="srpe-sess">${srpeBtns}</div></div></div>`;
 
   h += `<div class="savebar"><div class="inner"><button class="save" id="savebtn" onclick="saveSession()">${saveBtnTxt()}</button></div></div>`;
   app.innerHTML = h;
@@ -588,8 +596,9 @@ function esdRxCopy(name) {
 
 function renderCoach() {
   let h = `<div class="panel"><h3>WEEKLY REVIEW</h3>
-    <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:12px">Keyless flow: copy the payload → paste into Claude → paste the JSON reply back. Proposals apply to engine state on accept. (Serverless proxy = backlog item 5.)</div>
-    <button class="coachbtn" onclick="copyReviewPayload()">COPY REVIEW PAYLOAD</button>
+    <div class="sub" style="font-size:11px;color:var(--muted);margin-bottom:12px">Project flow: copy payload → paste into the Coach Project → argue → paste the whole reply back. Payload includes last review + proposal outcomes, so the Project tracks itself. One-shot button embeds the full prompt for a fresh chat instead.</div>
+    <button class="coachbtn" onclick="copyPayloadOnly()">COPY PAYLOAD — PROJECT</button>
+    <button class="coachbtn" style="background:var(--surface2);color:var(--text)" onclick="copyReviewPayload()">COPY W/ PROMPT — ONE-SHOT</button>
     <button class="coachbtn" style="background:var(--surface2);color:var(--text)" onclick="pasteReviewResponse()">PASTE RESPONSE</button>`;
   const pend = (S.proposals || []).map((p, i) => ({ p, i })).filter(x => x.p.state === "pending");
   for (const { p, i } of pend) {

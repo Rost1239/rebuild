@@ -2,7 +2,7 @@
  *  prefills are display-only, never measurements, never post-BJJ-sourced. */
 import { describe, it, expect } from "vitest";
 import * as E from "../src/engine.js";
-import { prefillFor, displayField, stepValue, filledEntry, withRecTarget } from "../src/draft.js";
+import { prefillFor, displayField, stepValue, filledEntry, withRecTarget, extractJSON } from "../src/draft.js";
 
 const TODAY = "2026-07-06";
 function sess({ date, flag = "fresh", entries = [] }) {
@@ -75,6 +75,25 @@ describe("filledEntry", () => {
     expect(filledEntry({ pain: 0 })).toBe(true);  // CLEAN is a logged claim
     expect(filledEntry({ amrap: 8 })).toBe(true);
     expect(filledEntry({ note: "x" })).toBe(true);
+  });
+});
+
+describe("extractJSON", () => {
+  const j = '{"status":"ok","flags":[],"next_week":"","proposals":[]}';
+  it("whole coach reply: prose + fenced JSON → the JSON", () => {
+    const reply = `Bench click is trending down, good.\n\nSome {inline braces} in prose.\n\n\`\`\`json\n${j}\n\`\`\``;
+    expect(JSON.parse(extractJSON(reply))).toEqual(JSON.parse(j));
+  });
+  it("last fence wins when prose contains earlier code blocks", () => {
+    const reply = "\`\`\`\nnot json\n\`\`\`\nmore prose\n\`\`\`json\n" + j + "\n\`\`\`";
+    expect(JSON.parse(extractJSON(reply))).toEqual(JSON.parse(j));
+  });
+  it("bare JSON and unfenced prose+JSON still work", () => {
+    expect(JSON.parse(extractJSON(j))).toEqual(JSON.parse(j));
+    expect(JSON.parse(extractJSON("Here you go:\n" + j))).toEqual(JSON.parse(j));
+  });
+  it("no JSON at all passes through for upstream error handling", () => {
+    expect(extractJSON("no json here")).toBe("no json here");
   });
 });
 

@@ -47,3 +47,14 @@ export function withRecTarget(pre, recCls, inc) {
   if (recCls !== "cleared" || pre.load == null || !inc) return pre;
   return { ...pre, load: rnd(pre.load + inc, 0.5), target: true };
 }
+
+/** Pull the coach-review JSON out of a pasted reply. Accepts a whole
+ *  prose-plus-JSON message: last fenced code block wins (the coach contract
+ *  says the JSON block comes last), else the first-{-to-last-} span, else
+ *  the raw text (upstream JSON.parse reports failure). */
+export function extractJSON(raw) {
+  const fences = [...raw.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)];
+  if (fences.length) return fences[fences.length - 1][1].trim();
+  const a = raw.indexOf("{"), b = raw.lastIndexOf("}");
+  return a >= 0 && b > a ? raw.slice(a, b + 1) : raw;
+}
